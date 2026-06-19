@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1b26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PiPi Game">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+<title>极简水管工 - 最少组件地狱版</title>
+<style>
+*{box-sizing:border-box;user-select:none;-webkit-user-select:none;margin:0;padding:0;touch-action:manipulation}
+html{background:#0b1117;height:100%;overflow:hidden;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(circle at top,#34495e 0%,#17202a 72%);color:#ecf0f1;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;min-height:100dvh;overflow-x:hidden;overflow-y:auto;padding:max(4px,env(safe-area-inset-top)) max(env(safe-area-inset-right),0px) max(4px,env(safe-area-inset-bottom)) max(env(safe-area-inset-left),0px);overscroll-behavior:none}
+#game-container{width:100%;max-width:430px;padding:6px 10px 10px;display:flex;flex-direction:column;align-items:center;flex:0 0 auto;min-height:calc(100dvh - max(8px, env(safe-area-inset-top) + env(safe-area-inset-bottom)))}
+header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
+.info-panel{flex:1;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.08);padding:6px 8px;border-radius:12px;text-align:center;font-size:12px}
+.info-panel span{font-weight:700;display:inline-block;transition:.2s}
+#pause-toggle{flex:0 0 74px;border:1px solid rgba(255,255,255,.12);background:rgba(7,18,28,.78);color:#ecf0f1;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:.22s}
+#pause-toggle:active{transform:scale(.97)}
+#pause-toggle.paused{background:rgba(22,160,133,.82);border-color:rgba(255,255,255,.2)}
+#board-wrapper{position:relative;width:100%;max-width:100%;background:linear-gradient(rgba(44,62,80,.18),rgba(44,62,80,.18)),url('./board-background.png');background-size:cover;background-position:center;border:5px solid #111820;border-radius:10px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,.35);transition:.25s}
+#board-wrapper.frozen{border-color:#5dade2;box-shadow:0 0 25px #5dade2}
+#board-wrapper.frozen:after{content:'❄️';position:absolute;right:10px;top:10px;font-size:22px;z-index:7;animation:spin 6s linear infinite}
+#board-wrapper.paused{background:#02070b;box-shadow:0 12px 30px rgba(0,0,0,.62)}
+#board-wrapper.paused #grid,
+#board-wrapper.paused #water-mask,
+#board-wrapper.paused .wall-port{opacity:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+#grid{display:grid;width:100%;height:100%;background:rgba(44,62,80,.45)}
+.cell{position:relative;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.045);background:rgba(20,28,36,.12);cursor:pointer}
+.cell.solution-hint{box-shadow:inset 0 0 0 1px rgba(241,196,15,.28)}
+.obstacle{
+ background:url('./brick-wall.png') center center / cover no-repeat;
+ border:1px solid #3f241c;
+ cursor:not-allowed;
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.08), inset 0 -2px 4px rgba(0,0,0,.32);
+}
+.grid-lvl1 .obstacle:after,.grid-lvl2 .obstacle:after{content:'';position:absolute;inset:0;border-radius:2px;background:linear-gradient(180deg,rgba(255,120,70,.12),rgba(120,10,0,.08))}
+#water-mask{position:absolute;left:0;bottom:0;width:100%;height:0%;background:rgba(41,128,185,.48);backdrop-filter:blur(1px);pointer-events:none;transition:height .1s linear;z-index:5;border-top:3px solid #3498db}
+.wall-port{position:absolute;--port-size:28px;--port-shift-x:0px;--port-shift-y:0px;width:var(--port-size);height:var(--port-size);display:flex;align-items:center;justify-content:center;z-index:8;font-size:14px;border-radius:4px;pointer-events:none;background:none;overflow:hidden;transform-origin:center center}
+.wall-port::before{content:'';position:absolute;inset:16%;background-repeat:no-repeat;background-size:contain;background-position:left center;transform:translate(var(--port-shift-x),var(--port-shift-y))}
+.wall-inlet{
+ background:none;
+ border:0;
+ filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));
+}
+.wall-inlet::before{background-image:url('./inlet-pipe-transparent.png')}
+.wall-outlet{
+ --port-shift-x:calc(var(--port-size) * -0.12);
+ background:none;
+ border:0;
+ filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));
+}
+.wall-outlet::before{background-image:url('./outlet-pipe-transparent-fixed.png');background-size:122% auto;background-position:center center;filter:contrast(1.06) saturate(.96)}
+.wall-outlet.flooded-outlet{
+ filter:drop-shadow(0 0 8px #2ecc71) drop-shadow(0 2px 4px rgba(0,0,0,.45));
+}
+.port-left{left:calc(var(--port-size) * -0.11);top:var(--port-center-y);transform:translateY(-50%) rotate(0deg)}
+.port-right{right:calc(var(--port-size) * -0.11);top:var(--port-center-y);transform:translateY(-50%) rotate(180deg)}
+.port-top{top:calc(var(--port-size) * -0.11);left:var(--port-center-x);transform:translateX(-50%) rotate(90deg)}
+.port-bottom{bottom:calc(var(--port-size) * -0.11);left:var(--port-center-x);transform:translateX(-50%) rotate(270deg)}
+#board-wrapper .wall-port:before{content:''}
+#board-wrapper .wall-port:after{content:none}
+.pipe-wrapper{width:100%;height:100%;position:relative;display:none;transition:transform .15s ease-out}
+.pipe-I{position:absolute;background:#95a5a6;border-radius:3px;width:100%;height:30%;top:35%;left:0;display:none}
+.pipe-L,.pipe-T{position:absolute;width:100%;height:100%;background:transparent!important}
+.pipe-L .seg-v,.pipe-T .seg-v{position:absolute;width:30%;height:50%;left:35%;top:0;background:#95a5a6;border-radius:3px 3px 0 0}
+.pipe-T .seg-v{height:100%;border-radius:3px}
+.pipe-L .seg-h,.pipe-T .seg-h{position:absolute;width:50%;height:30%;left:50%;top:35%;background:#95a5a6;border-radius:0 3px 3px 0}
+.pipe-L .corner,.pipe-T .corner{position:absolute;width:30%;height:30%;left:35%;top:35%;background:#95a5a6}
+.pipe-L .corner{border-radius:50%}
+@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.25)}}
+.flooded .pipe-I,.flooded .pipe-L .seg-v,.flooded .pipe-L .seg-h,.flooded .pipe-L .corner,.flooded .pipe-T .seg-v,.flooded .pipe-T .seg-h,.flooded .pipe-T .corner{background:#2980b9!important;box-shadow:0 0 8px #3498db;animation:pulse 1.5s infinite ease-in-out}
+.pipe-shatter .pipe-wrapper{animation:shatter 1.5s forwards!important}
+@keyframes shatter{0%{filter:grayscale(.6) sepia(1) hue-rotate(-50deg) saturate(4);transform:scale(1);opacity:1}15%,45%,75%{transform:scale(.95) translate(2px,-1px) rotate(3deg);opacity:.8}30%,60%{transform:scale(.95) translate(-2px,1px) rotate(-3deg);opacity:.8}100%{filter:grayscale(1);transform:scale(.7);opacity:0}}
+.leak-indicator{position:absolute;z-index:6;animation:spray .5s infinite alternate ease-in-out;pointer-events:none;display:none}
+@keyframes spray{0%{transform:scale(.7) translate(0,0);opacity:.6}100%{transform:scale(1.25) translate(var(--tx),var(--ty));opacity:1}}
+.grid-lvl1 .leak-indicator{font-size:18px}.grid-lvl2 .leak-indicator{font-size:10px}
+.grid-lvl1 .leak-0{top:-12px;left:calc(50% - 9px);--tx:0;--ty:-8px}.grid-lvl1 .leak-1{right:-12px;top:calc(50% - 9px);--tx:8px;--ty:0}.grid-lvl1 .leak-2{bottom:-12px;left:calc(50% - 9px);--tx:0;--ty:8px}.grid-lvl1 .leak-3{left:-12px;top:calc(50% - 9px);--tx:-8px;--ty:0}
+.grid-lvl2 .leak-0{top:-8px;left:calc(50% - 5px);--tx:0;--ty:-5px}.grid-lvl2 .leak-1{right:-8px;top:calc(50% - 5px);--tx:5px;--ty:0}.grid-lvl2 .leak-2{bottom:-8px;left:calc(50% - 5px);--tx:0;--ty:5px}.grid-lvl2 .leak-3{left:-8px;top:calc(50% - 5px);--tx:-5px;--ty:0}
+.rot-0{transform:rotate(0)}.rot-90{transform:rotate(90deg)}.rot-180{transform:rotate(180deg)}.rot-270{transform:rotate(270deg)}
+#toolbar{width:100%;display:flex;gap:5px;margin-top:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.07);padding:6px;border-radius:10px;z-index:9}
+.tool-btn{flex:1;background:#34495e;border:2px solid #7f8c8d;color:#ecf0f1;padding:5px 2px;border-radius:8px;cursor:pointer;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.2s}
+.tool-btn.active{border-color:#f1c40f;background:#1a252f}.tool-btn:active{transform:scale(.97)}.empty-inventory{opacity:.38}
+.btn-preview{width:20px;height:20px;background:#95a5a6;border-radius:4px;position:relative}.btn-preview-I{position:absolute;width:20px;height:5px;top:7.5px;left:0;background:#ecf0f1}.btn-preview-L{position:absolute;width:6px;height:10px;top:0;left:7px;background:#ecf0f1}.btn-preview-L:after{content:'';position:absolute;width:10px;height:6px;left:0;top:4px;background:#ecf0f1}.btn-preview-T{position:absolute;width:6px;height:16px;top:2px;left:7px;background:#ecf0f1}.btn-preview-T:after{content:'';position:absolute;width:8px;height:6px;left:6px;top:5px;background:#ecf0f1}
+.badge{background:rgba(0,0,0,.5);padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;color:#f1c40f}
+#items-panel{display:flex;gap:8px;margin-top:6px;width:100%;justify-content:center;z-index:9}
+.item-btn{background:#16a085;border:0;color:white;padding:6px 12px;border-radius:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;box-shadow:0 3px 6px rgba(0,0,0,.2);transition:.2s}.item-btn:active{transform:scale(.95)}.item-btn.disabled{background:#7f8c8d;opacity:.5;box-shadow:none}.item-count{background:rgba(0,0,0,.3);border-radius:50%;width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+#modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,.94);z-index:10;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+#modal h2{font-size:24px;line-height:1.45;margin-bottom:10px}#modal button{background:#27ae60;border:0;color:white;padding:10px 24px;font-size:15px;border-radius:6px;cursor:pointer;margin-top:15px}
+.tip{margin-top:5px;font-size:10px;color:#bdc3c7;text-align:center;max-width:96%;z-index:9;line-height:1.35}.tip strong{color:#f1c40f}
+
+/* ===== 视觉与音效版美术增强 ===== */
+body{
+ background:
+  radial-gradient(circle at 20% 12%, rgba(52,152,219,.28) 0%, transparent 28%),
+  radial-gradient(circle at 82% 18%, rgba(46,204,113,.18) 0%, transparent 24%),
+  linear-gradient(145deg,#1b2631 0%,#17202a 45%,#0b1117 100%);
+}
+#game-container:before{
+ content:'';
+ position:fixed;
+ inset:0;
+ pointer-events:none;
+ background-image:
+  linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+ background-size:28px 28px;
+ mask-image:radial-gradient(circle, black 0%, transparent 76%);
+}
+.info-panel{
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 4px 12px rgba(0,0,0,.22);
+}
+#board-wrapper{
+ border-color:#0d141b;
+ box-shadow:0 12px 30px rgba(0,0,0,.45), inset 0 0 18px rgba(255,255,255,.04);
+}
+.cell{
+ background:
+  radial-gradient(circle at 35% 30%, rgba(255,255,255,.055), transparent 45%),
+  rgba(18,27,36,.20);
+}
+.obstacle{
+ background:url('./brick-wall.png') center center / cover no-repeat;
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.08), inset 0 -2px 4px rgba(0,0,0,.32);
+}
+.pipe-I,
+.pipe-L .seg-v,.pipe-L .seg-h,.pipe-L .corner,
+.pipe-T .seg-v,.pipe-T .seg-h,.pipe-T .corner{
+ background:
+  linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 45%),
+  linear-gradient(90deg,#7f8c8d,#bdc3c7 48%,#7f8c8d);
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.32), inset 0 -2px 3px rgba(0,0,0,.22);
+}
+.flooded .pipe-I,
+.flooded .pipe-L .seg-v,.flooded .pipe-L .seg-h,.flooded .pipe-L .corner,
+.flooded .pipe-T .seg-v,.flooded .pipe-T .seg-h,.flooded .pipe-T .corner{
+ background:
+  linear-gradient(180deg, rgba(255,255,255,.32), rgba(255,255,255,0) 44%),
+  linear-gradient(90deg,#1f78b4,#5dade2 48%,#1f78b4) !important;
+}
+
+.wall-outlet{
+ --port-size:clamp(24px, calc((100% / var(--cols)) * .52), 36px);
+}
+.wall-outlet.flooded-outlet{
+ filter:drop-shadow(0 0 8px #2ecc71) drop-shadow(0 2px 4px rgba(0,0,0,.45));
+}
+.wall-inlet{
+ --port-size:clamp(24px, calc((100% / var(--cols)) * .52), 36px);
+}
+@media (max-height: 860px){
+ #game-container{padding:4px 8px 8px;min-height:calc(100dvh - 4px)}
+ header{margin-bottom:4px}
+ .info-panel{padding:5px 7px;font-size:11px}
+ #pause-toggle{flex-basis:68px;font-size:11px}
+ #toolbar{margin-top:4px;padding:5px}
+ .tool-btn{padding:4px 1px;font-size:9px;gap:2px}
+ .btn-preview{width:18px;height:18px}
+ .btn-preview-I{width:18px;top:6.5px}
+ .btn-preview-L{height:9px;left:6px}
+ .btn-preview-L:after{width:9px;top:3px}
+ .btn-preview-T{height:14px;left:6px}
+ .btn-preview-T:after{width:7px;left:5px;top:4px}
+ #items-panel{margin-top:4px;gap:6px}
+ .item-btn{padding:5px 10px;font-size:10px}
+ .tip{margin-top:4px;font-size:9px;line-height:1.25}
+}
+#toolbar,.info-panel,#items-panel .item-btn{
+ backdrop-filter:blur(6px);
+}
+.tool-btn{
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 2px 7px rgba(0,0,0,.22);
+}
+.tool-btn.active{
+ box-shadow:0 0 12px rgba(241,196,15,.35), inset 0 1px 0 rgba(255,255,255,.08);
+}
+@media (display-mode: standalone){
+ body{padding:max(6px,env(safe-area-inset-top)) max(env(safe-area-inset-right),0px) max(8px,env(safe-area-inset-bottom)) max(env(safe-area-inset-left),0px)}
+}
+#orientation-overlay{display:none;position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,rgba(7,15,23,.95),rgba(11,23,34,.98));align-items:center;justify-content:center;padding:24px;text-align:center}
+#orientation-overlay .orientation-card{max-width:320px;padding:22px 20px;border-radius:22px;background:rgba(14,31,45,.88);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+#orientation-overlay h2{font-size:24px;letter-spacing:.04em;margin-bottom:10px}
+#orientation-overlay p{font-size:14px;line-height:1.5;color:#cdd8e3}
+body.landscape-warning #orientation-overlay{display:flex}
+body.landscape-warning #game-container{visibility:hidden}
+
+
+#modal.fail-modal{
+ background:rgba(0,0,0,.28);
+ backdrop-filter:none;
+ justify-content:flex-end;
+ padding-bottom:18px;
+}
+#modal.fail-modal h2{
+ background:rgba(0,0,0,.72);
+ border:1px solid rgba(255,255,255,.12);
+ border-radius:12px;
+ padding:14px 16px;
+ box-shadow:0 8px 24px rgba(0,0,0,.38);
+}
+#modal.fail-modal button{
+ margin-top:8px;
+}
+#modal-btn-reveal{
+ display:none;
+ background:#e67e22!important;
+}
+#modal.fail-modal #modal-btn-reveal{
+ display:inline-block;
+}
+#modal.answer-reveal{
+ display:none!important;
+}
+#pause-overlay{
+ display:none;
+ position:absolute;
+ inset:0;
+ z-index:11;
+ background:
+  radial-gradient(circle at center, rgba(31,91,126,.34), rgba(1,7,13,.96) 72%),
+  linear-gradient(180deg, rgba(0,0,0,.84), rgba(0,0,0,.96));
+ align-items:center;
+ justify-content:center;
+ text-align:center;
+ padding:24px;
+ backdrop-filter:blur(10px);
+}
+#pause-overlay.active{display:flex}
+.pause-card{
+ width:min(88%,320px);
+ padding:26px 20px;
+ border-radius:22px;
+ border:1px solid rgba(255,255,255,.12);
+ background:rgba(9,20,30,.78);
+ box-shadow:0 16px 42px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.pause-card h2{font-size:30px;letter-spacing:.14em;margin-bottom:12px}
+.pause-card p{font-size:13px;line-height:1.7;color:#c7d8e6}
+.pause-card button{margin-top:16px;padding:10px 20px;border:0;border-radius:999px;background:linear-gradient(135deg,#4db6ac,#0f766e);color:#f6feff;font-weight:700;cursor:pointer}
+.answer-moving .pipe-wrapper{
+ transition:transform .55s cubic-bezier(.2,.8,.2,1), opacity .35s ease-out!important;
+}
+.answer-ghost{
+ position:absolute;
+ z-index:9;
+ pointer-events:none;
+ opacity:.96;
+ transition:left .65s cubic-bezier(.2,.8,.2,1), top .65s cubic-bezier(.2,.8,.2,1), transform .65s cubic-bezier(.2,.8,.2,1);
+}
+.answer-ghost .pipe-wrapper{
+ display:block!important;
+ width:100%;
+ height:100%;
+}
+.answer-hint-flash{
+ animation:answerFlash .9s ease-in-out 2;
+}
+@keyframes answerFlash{
+ 0%,100%{box-shadow:inset 0 0 0 1px rgba(46,204,113,.18)}
+ 50%{box-shadow:inset 0 0 0 2px rgba(46,204,113,.85),0 0 12px rgba(46,204,113,.45)}
+}
+
+#intro-screen{
+ position:fixed;
+ inset:0;
+ z-index:30;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ padding:24px;
+ background:
+  radial-gradient(circle at 50% 18%, rgba(113,196,255,.24), transparent 24%),
+  radial-gradient(circle at 20% 20%, rgba(27,153,139,.18), transparent 20%),
+  linear-gradient(180deg, #07111a 0%, #091722 45%, #03070d 100%);
+ overflow:hidden;
+}
+#intro-screen.hidden{
+ opacity:0;
+ pointer-events:none;
+ transition:opacity .7s ease;
+}
+#intro-screen:before,
+#intro-screen:after{
+ content:'';
+ position:absolute;
+ inset:auto;
+ width:42vmin;
+ height:42vmin;
+ border-radius:50%;
+ border:1px solid rgba(137,207,240,.15);
+ animation:rippleExpand 4.4s infinite ease-out;
+}
+#intro-screen:after{
+ animation-delay:1.6s;
+ width:56vmin;
+ height:56vmin;
+}
+.intro-card{
+ position:relative;
+ width:min(92vw,430px);
+ padding:34px 24px 28px;
+ border-radius:32px;
+ background:linear-gradient(180deg, rgba(12,28,40,.86), rgba(5,11,18,.92));
+ border:1px solid rgba(255,255,255,.1);
+ box-shadow:0 24px 80px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.08);
+ text-align:center;
+ overflow:hidden;
+}
+.intro-card:before{
+ content:'';
+ position:absolute;
+ inset:-40% -10% auto;
+ height:65%;
+ background:radial-gradient(circle at center, rgba(113,196,255,.18), transparent 60%);
+ animation:introSway 5s ease-in-out infinite;
+}
+.intro-avatar{
+ position:relative;
+ width:152px;
+ height:152px;
+ margin:0 auto 20px;
+ border-radius:50%;
+ overflow:hidden;
+ border:4px solid rgba(214,240,255,.92);
+ box-shadow:0 0 0 10px rgba(93,173,226,.12), 0 18px 40px rgba(0,0,0,.36);
+ animation:waterFloat 3.8s ease-in-out infinite;
+}
+.intro-avatar img{
+ width:100%;
+ height:100%;
+ object-fit:cover;
+ display:block;
+ transform:scale(1.06);
+}
+.intro-avatar:before,
+.intro-avatar:after{
+ content:'';
+ position:absolute;
+ inset:-12%;
+ border-radius:50%;
+ border:2px solid rgba(147,220,255,.34);
+ animation:rippleExpand 2.8s infinite ease-out;
+}
+.intro-avatar:after{animation-delay:1.2s}
+.intro-title{
+ position:relative;
+ font-size:clamp(42px,11vw,68px);
+ line-height:1;
+ font-weight:800;
+ letter-spacing:.08em;
+ margin-bottom:12px;
+ color:#f7fbff;
+ text-transform:none;
+ animation:titleBob 2.9s ease-in-out infinite;
+}
+.intro-title .wave{
+ display:inline-block;
+ text-shadow:0 0 18px rgba(121,201,255,.32);
+ animation:letterWave 1.8s ease-in-out infinite;
+}
+.intro-title .wave:nth-child(2){animation-delay:.12s}
+.intro-title .wave:nth-child(3){animation-delay:.24s}
+.intro-title .wave:nth-child(4){animation-delay:.36s}
+.intro-title .wave:nth-child(5){animation-delay:.48s}
+.intro-title .wave:nth-child(6){animation-delay:.6s}
+.intro-title .wave:nth-child(7){animation-delay:.72s}
+.intro-title .wave:nth-child(8){animation-delay:.84s}
+.intro-subtitle{
+ font-size:14px;
+ color:#a9bfd0;
+ letter-spacing:.18em;
+ margin-bottom:22px;
+}
+.intro-start{
+ border:0;
+ border-radius:999px;
+ padding:12px 28px;
+ font-size:14px;
+ font-weight:700;
+ color:#f8feff;
+ background:linear-gradient(135deg,#7dd3fc,#0f766e);
+ box-shadow:0 10px 24px rgba(10,96,116,.35);
+ cursor:pointer;
+}
+.intro-start:active{transform:scale(.98)}
+@keyframes rippleExpand{
+ 0%{transform:scale(.62);opacity:.52}
+ 70%{opacity:.18}
+ 100%{transform:scale(1.28);opacity:0}
+}
+@keyframes introSway{
+ 0%,100%{transform:translateY(-4%) scale(1)}
+ 50%{transform:translateY(4%) scale(1.06)}
+}
+@keyframes waterFloat{
+ 0%,100%{transform:translateY(0) scale(1)}
+ 50%{transform:translateY(-7px) scale(1.02)}
+}
+@keyframes titleBob{
+ 0%,100%{transform:translateY(0)}
+ 50%{transform:translateY(-5px)}
+}
+@keyframes letterWave{
+ 0%,100%{transform:translateY(0) scaleY(1);opacity:.95}
+ 50%{transform:translateY(-8px) scaleY(1.06);opacity:1}
+}
+
+</style>
+</head>
+<body>
+<div id="orientation-overlay"><div class="orientation-card"><h2>竖屏体验更好</h2><p>把 iPhone 旋回竖屏，网格、工具栏和暂停界面都会更完整，也更适合主屏安装后的全屏游玩。</p></div></div>
+<div id="intro-screen">
+<div class="intro-card">
+<div class="intro-avatar"><img src="./pi-game-avatar.jpeg" alt="ππ game 头像"></div>
+<div class="intro-title"><span class="wave">π</span><span class="wave">π</span><span class="wave">&nbsp;</span><span class="wave">g</span><span class="wave">a</span><span class="wave">m</span><span class="wave">e</span></div>
+<div class="intro-subtitle">WATER RIPPLE ENTRY</div>
+<button class="intro-start" id="intro-start-btn" type="button">开始游戏</button>
+</div>
+</div>
+<div id="game-container">
+<header>
+<div class="info-panel">关卡: <span id="level-text">1</span> | 得分: <span id="score-text">0</span></div>
+<div class="info-panel">剩余: <span id="timer-text">45</span>s | 水位: <span id="water-text">0</span>%</div>
+<button id="pause-toggle" type="button">暂停</button>
+</header>
+<div id="board-wrapper">
+<div id="grid"></div><div id="water-mask"></div>
+<div id="modal"><h2 id="modal-title">游戏结束</h2><button id="modal-btn" onclick="nextLevelOrReset()">继续</button><button id="modal-btn-reveal" onclick="revealAnswer()">我不服气</button></div>
+<div id="pause-overlay"><div class="pause-card"><h2>PAUSE</h2><p>当前局面已完全隐藏，水位与计时都已停止。等你想好策略，再继续。</p><button id="pause-resume-btn" type="button">继续游戏</button></div></div>
+</div>
+<div id="toolbar">
+<button class="tool-btn active" id="btn-I" onclick="selectTool('I',this)"><div class="btn-preview"><div class="btn-preview-I"></div></div>直管<span class="badge" id="badge-I">x0</span></button>
+<button class="tool-btn" id="btn-L" onclick="selectTool('L',this)"><div class="btn-preview"><div class="btn-preview-L"></div></div>弯管<span class="badge" id="badge-L">x0</span></button>
+<button class="tool-btn" id="btn-T" onclick="selectTool('T',this)"><div class="btn-preview"><div class="btn-preview-T"></div></div>三通<span class="badge" id="badge-T">x0</span></button>
+<button class="tool-btn" id="btn-eraser" onclick="selectTool('eraser',this)"><div style="font-size:16px;line-height:20px">🧹</div>拆除<span class="badge" style="color:#ecf0f1">--</span></button>
+</div>
+<div id="items-panel">
+<button class="item-btn" id="btn-freeze" onclick="useFreeze()"><span>❄️</span>冰冻剂<span class="item-count" id="count-freeze">1</span></button>
+<button class="item-btn" id="btn-pump" onclick="usePump()"><span>💨</span>抽水泵<span class="item-count" id="count-pump">1</span></button>
+</div>
+<div class="tip" id="tip-text">第一关是教学关：黄色格子就是唯一通道，组件刚好够用。</div>
+</div>
+
+<script>
+let ROWS=8,COLS=6;
+const LEVEL1={
+ rows:8,cols:6,duration:55,freezeCount:1,pumpCount:1,mustConnectAllInlets:false,showSolutionHint:true,
+ inlets:[{r:2,c:0,dir:3}],outlets:[{r:5,c:5,dir:1}],
+ solutionPath:[{r:2,c:0},{r:2,c:1},{r:2,c:2},{r:2,c:3},{r:3,c:3},{r:4,c:3},{r:5,c:3},{r:5,c:4},{r:5,c:5}],
+ fixedInventory:{I:7,L:2,T:0}
+};
+const LEVEL2={rows:16,cols:12,duration:125,freezeCount:1,pumpCount:1,mustConnectAllInlets:true,showSolutionHint:false};
+let gridState=[],currentTool='I',waterLevel=0,currentStep=0,isGameOver=false,timerInterval=null,currentLevel=1,score=0,levelWon=false;
+let freezeCount=1,pumpCount=1,isFrozen=false,freezeTicksRemaining=0,inventory={I:0,L:0,T:0},currentInlets=[],currentOutlets=[],currentSolutionCells=new Set(),currentSolutionEdges=[];
+let audioCtx=null;
+let answerRevealMode=false;
+let waitingForNextAfterReveal=false;
+let isPaused=false;
+let hasStartedGame=false;
+
+function keyOf(r,c){return `${r},${c}`}
+function parseKey(k){const [r,c]=k.split(',').map(Number);return{r,c}}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function getDir(a,b){if(b.r===a.r-1&&b.c===a.c)return 0;if(b.r===a.r&&b.c===a.c+1)return 1;if(b.r===a.r+1&&b.c===a.c)return 2;if(b.r===a.r&&b.c===a.c-1)return 3;return-1}
+function opp(d){return(d+2)%4}
+function rotateDirections(base,angle){const s=Math.floor(angle/90),res=[0,0,0,0];for(let i=0;i<4;i++)res[(i+s)%4]=base[i];return res}
+function getPipeBaseConnections(t){if(t==='I')return[0,1,0,1];if(t==='L')return[1,1,0,0];if(t==='T')return[1,1,1,0];return[0,0,0,0]}
+function getPipeTypeFromDirs(ds){ds=[...ds].sort((a,b)=>a-b);if(ds.length===2&&opp(ds[0])===ds[1])return'I';if(ds.length===2)return'L';if(ds.length===3)return'T';return null}
+function ensureAudioContext(){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume()}catch(e){}}
+function playSound(freq,type,duration){try{ensureAudioContext();if(!audioCtx)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq;o.type=type;g.gain.setValueAtTime(.04,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.005,audioCtx.currentTime+duration);o.start();o.stop(audioCtx.currentTime+duration)}catch(e){}}
+function playFreezeSound(){playSound(880,'sine',.4);setTimeout(()=>playSound(1200,'sine',.4),100)}
+function playPumpSound(){playSound(200,'triangle',.5);setTimeout(()=>playSound(150,'triangle',.5),200)}
+function playPipePlaceSound(){playSound(600,'sine',.1)}
+
+function playConnectSound(){
+ playPipePlaceSound();
+}
+function playDangerSound(){
+ // 危险爆裂音：低频下滑 + 尖锐警告
+ playSound(95,'sawtooth',.45);
+ setTimeout(()=>playSound(740,'square',.12),60);
+ setTimeout(()=>playSound(520,'square',.16),180);
+}
+function beginGameFromIntro(){
+ if(hasStartedGame)return;
+ ensureAudioContext();
+ startBGM();
+ hasStartedGame=true;
+ document.getElementById('intro-screen').classList.add('hidden');
+ setTimeout(()=>{document.getElementById('intro-screen').style.display='none'},720);
+ resetGame();
+}
+let bgmTimer=null;
+let bgmStep=0;
+function startBGM(){
+ ensureAudioContext();
+ if(bgmTimer)return;
+ const notes=[262,330,392,330,294,349,440,349];
+ const bass=[131,131,147,147,165,165,147,147];
+ bgmTimer=setInterval(()=>{
+  if(isGameOver||isFrozen)return;
+  const n=notes[bgmStep%notes.length];
+  const b=bass[bgmStep%bass.length];
+  playSound(n,'triangle',.16);
+  if(bgmStep%2===0)playSound(b,'sine',.18);
+  bgmStep++;
+ },260);
+}
+
+
+function buildGraphFromEdges(edges,inlets,outlets){
+ const graph=new Map();
+ function add(r,c,d){const k=keyOf(r,c);if(!graph.has(k))graph.set(k,new Set());graph.get(k).add(d)}
+ edges.forEach(e=>{const a={r:e[0][0],c:e[0][1]},b={r:e[1][0],c:e[1][1]};const d1=getDir(a,b),d2=getDir(b,a);if(d1>=0){add(a.r,a.c,d1);add(b.r,b.c,d2)}});
+ inlets.forEach(p=>{const k=keyOf(p.r,p.c);if(graph.has(k))graph.get(k).add(p.dir)});
+ outlets.forEach(p=>{const k=keyOf(p.r,p.c);if(graph.has(k))graph.get(k).add(p.dir)});
+ return graph;
+}
+function inventoryFromGraph(graph){
+ const counts={I:0,L:0,T:0},bad=[];
+ graph.forEach((s,k)=>{const t=getPipeTypeFromDirs([...s]);if(t)counts[t]++;else bad.push([k,[...s]])});
+ return{counts,bad};
+}
+
+function rotationForExactDirs(pipeType,dirs){
+ const target=[0,0,0,0];
+ dirs.forEach(d=>target[d]=1);
+ for(let a=0;a<360;a+=90){
+  const conns=rotateDirections(getPipeBaseConnections(pipeType),a);
+  let ok=true;
+  for(let i=0;i<4;i++){
+   if(conns[i]!==target[i]){ok=false;break}
+  }
+  if(ok)return a;
+ }
+ return 0;
+}
+function getCurrentAnswerPlacements(){
+ const graph=buildGraphFromEdges(currentSolutionEdges,currentInlets,currentOutlets);
+ const placements=[];
+ graph.forEach((dirs,k)=>{
+  const arr=[...dirs];
+  const pipeType=getPipeTypeFromDirs(arr);
+  if(!pipeType)return;
+  const {r,c}=parseKey(k);
+  placements.push({r,c,pipeType,rotation:rotationForExactDirs(pipeType,arr)});
+ });
+ return placements;
+}
+function applyAnswerToGridAnimated(){
+ answerRevealMode=true;
+ waitingForNextAfterReveal=false;
+ document.getElementById('modal').className='answer-reveal';
+ document.getElementById('modal').className='';document.getElementById('modal').style.display='none';
+
+ const board=document.getElementById('board-wrapper');
+ const placements=getCurrentAnswerPlacements();
+ const existingPipes=[];
+ for(let r=0;r<ROWS;r++){
+  for(let c=0;c<COLS;c++){
+   const cell=gridState[r][c];
+   if(cell.type==='pipe'&&!cell.isBroken){
+    existingPipes.push({r,c,pipeType:cell.pipeType,rotation:cell.rotation});
+   }
+  }
+ }
+
+ // 先清空所有水管，但保留障碍和 DOM。
+ for(let r=0;r<ROWS;r++){
+  for(let c=0;c<COLS;c++){
+   const cell=gridState[r][c];
+   if(cell.type==='pipe'){
+    gridState[r][c]={type:'empty',isBroken:false,brokenTime:null,dom:cell.dom,isSolution:cell.isSolution};
+   }
+  }
+ }
+
+ renderGrid(new Set());
+
+ const cellW=board.clientWidth/COLS;
+ const cellH=board.clientHeight/ROWS;
+ const ghosts=[];
+
+ function makeGhost(pipeType,rotation,fromR,fromC,toR,toC,delay){
+  const g=document.createElement('div');
+  g.className='answer-ghost';
+  g.style.width=cellW+'px';
+  g.style.height=cellH+'px';
+  g.style.left=(fromC*cellW)+'px';
+  g.style.top=(fromR*cellH)+'px';
+
+  const wrap=document.createElement('div');
+  wrap.className=`pipe-wrapper rot-${rotation}`;
+  const pipeI=document.createElement('div');pipeI.className='pipe-I';
+  const pipeL=document.createElement('div');pipeL.className='pipe-L';pipeL.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';
+  const pipeT=document.createElement('div');pipeT.className='pipe-T';pipeT.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';
+  wrap.appendChild(pipeI);wrap.appendChild(pipeL);wrap.appendChild(pipeT);
+  pipeI.style.display=pipeType==='I'?'block':'none';
+  pipeL.style.display=pipeType==='L'?'block':'none';
+  pipeT.style.display=pipeType==='T'?'block':'none';
+  g.appendChild(wrap);
+  board.appendChild(g);
+  ghosts.push(g);
+
+  setTimeout(()=>{
+   g.style.left=(toC*cellW)+'px';
+   g.style.top=(toR*cellH)+'px';
+   g.style.transform='scale(1.02)';
+  },delay);
+ }
+
+ placements.forEach((p,i)=>{
+  const src=existingPipes[i%Math.max(1,existingPipes.length)]||{r:Math.floor(ROWS/2),c:Math.floor(COLS/2)};
+  makeGhost(p.pipeType,p.rotation,src.r,src.c,p.r,p.c,20+i*22);
+ });
+
+ setTimeout(()=>{
+  ghosts.forEach(g=>g.remove());
+  placements.forEach(p=>{
+   const cell=gridState[p.r][p.c];
+   if(cell.type!=='obstacle'){
+    gridState[p.r][p.c]={
+     type:'pipe',
+     pipeType:p.pipeType,
+     rotation:p.rotation,
+     isBroken:false,
+     brokenTime:null,
+     dom:cell.dom,
+     isSolution:cell.isSolution
+    };
+    cell.dom?.cellEl?.classList.add('answer-hint-flash');
+   }
+  });
+  renderGrid(checkConnectivity());
+  playConnectSound();
+  waitingForNextAfterReveal=true;
+ },900+placements.length*22);
+}
+function revealAnswer(){
+ if(currentLevel!==2||!isGameOver)return;
+ applyAnswerToGridAnimated();
+}
+
+
+function generateLevel1(){
+ ROWS=LEVEL1.rows;COLS=LEVEL1.cols;currentInlets=LEVEL1.inlets.map(x=>({...x}));currentOutlets=LEVEL1.outlets.map(x=>({...x}));
+ currentSolutionEdges=[];for(let i=0;i<LEVEL1.solutionPath.length-1;i++){const a=LEVEL1.solutionPath[i],b=LEVEL1.solutionPath[i+1];currentSolutionEdges.push([[a.r,a.c],[b.r,b.c]])}
+ const graph=buildGraphFromEdges(currentSolutionEdges,currentInlets,currentOutlets);currentSolutionCells=new Set([...graph.keys()]);
+ gridState=[];for(let r=0;r<ROWS;r++){gridState[r]=[];for(let c=0;c<COLS;c++){const isSol=currentSolutionCells.has(keyOf(r,c));gridState[r][c]={type:isSol?'empty':'obstacle',isBroken:false,brokenTime:null,isSolution:isSol}}}
+ inventory={...LEVEL1.fixedInventory};freezeCount=LEVEL1.freezeCount;pumpCount=LEVEL1.pumpCount;
+}
+
+function randInt(n){return Math.floor(Math.random()*n)}
+function countObstacleComponents(blocked){
+ const seen=new Set();let count=0;
+ const dirs=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+ blocked.forEach(k=>{
+  if(seen.has(k))return;
+  count++;
+  const q=[k];seen.add(k);
+  while(q.length){
+   const p=parseKey(q.shift());
+   for(const [dr,dc] of dirs){
+    const nk=keyOf(p.r+dr,p.c+dc);
+    if(blocked.has(nk)&&!seen.has(nk)){seen.add(nk);q.push(nk)}
+   }
+  }
+ });
+ return count;
+}
+function makeRandomObstacles(rows,cols){
+ /*
+   障碍生成规则：
+   1. 总障碍数量约占全图 1/3。
+   2. 少量单格，大部分为单排或 L 型。
+   3. 每个成组障碍最多 5 格。
+   4. 最终按八方向相邻合并后，障碍连通块数量至少 7 块。
+      也就是：哪怕斜着挨着，也算同一块障碍。
+ */
+ const target=Math.floor(rows*cols*0.33);
+
+ function buildOnce(){
+  const blocked=new Set();
+
+  function can(r,c){
+   return r>=0&&r<rows&&c>=0&&c<cols&&!blocked.has(keyOf(r,c));
+  }
+
+  function add(r,c,temp){
+   if(!can(r,c))return false;
+   const k=keyOf(r,c);
+   if(temp){
+    if(temp.has(k))return false;
+    temp.add(k);
+   }else{
+    blocked.add(k);
+   }
+   return true;
+  }
+
+  function randomCell(){
+   return{r:randInt(rows),c:randInt(cols)};
+  }
+
+  function placeSingle(){
+   for(let i=0;i<80;i++){
+    const p=randomCell();
+    if(add(p.r,p.c))return true;
+   }
+   return false;
+  }
+
+  function placeLine(){
+   const len=2+randInt(4);
+   const horizontal=Math.random()<.5;
+   const p=randomCell();
+   const temp=new Set();
+
+   for(let i=0;i<len;i++){
+    const r=p.r+(horizontal?0:i);
+    const c=p.c+(horizontal?i:0);
+    if(!add(r,c,temp))return false;
+   }
+
+   temp.forEach(k=>blocked.add(k));
+   return true;
+  }
+
+  function placeL(){
+   const total=3+randInt(3);
+   const lenA=2+randInt(total-2);
+   const lenB=total-lenA+1;
+   const p=randomCell();
+   const temp=new Set();
+   const dirs=shuffle([
+    [{dr:0,dc:1},{dr:1,dc:0}],
+    [{dr:0,dc:1},{dr:-1,dc:0}],
+    [{dr:0,dc:-1},{dr:1,dc:0}],
+    [{dr:0,dc:-1},{dr:-1,dc:0}]
+   ])[0];
+
+   for(let i=0;i<lenA;i++){
+    if(!add(p.r+dirs[0].dr*i,p.c+dirs[0].dc*i,temp))return false;
+   }
+   for(let j=1;j<lenB;j++){
+    if(!add(p.r+dirs[1].dr*j,p.c+dirs[1].dc*j,temp))return false;
+   }
+
+   if(temp.size<3||temp.size>5)return false;
+   temp.forEach(k=>blocked.add(k));
+   return true;
+  }
+
+  let attempts=0;
+  while(blocked.size<target&&attempts<target*100){
+   attempts++;
+   const x=Math.random();
+   if(x<.22)placeSingle();
+   else if(x<.76)placeLine();
+   else placeL();
+  }
+
+  while(blocked.size<target&&attempts<target*150){
+   attempts++;
+   placeSingle();
+  }
+
+  return blocked;
+ }
+
+ let best=null;
+ let bestComponents=-1;
+
+ for(let attempt=0;attempt<120;attempt++){
+  const blocked=buildOnce();
+  const components=countObstacleComponents(blocked);
+  if(components>=7)return blocked;
+  if(components>bestComponents){
+   bestComponents=components;
+   best=blocked;
+  }
+ }
+
+ // 极端情况下返回最接近的版本，避免生成卡死。
+ return best||buildOnce();
+}
+function portCandidates(rows,cols,allowedSides,blocked){
+ const arr=[];
+ allowedSides.forEach(side=>{
+  if(side==='left')for(let r=0;r<rows;r++)if(!blocked.has(keyOf(r,0)))arr.push({r,c:0,dir:3,side});
+  if(side==='right')for(let r=0;r<rows;r++)if(!blocked.has(keyOf(r,cols-1)))arr.push({r,c:cols-1,dir:1,side});
+  if(side==='top')for(let c=0;c<cols;c++)if(!blocked.has(keyOf(0,c)))arr.push({r:0,c,dir:0,side});
+  if(side==='bottom')for(let c=0;c<cols;c++)if(!blocked.has(keyOf(rows-1,c)))arr.push({r:rows-1,c,dir:2,side});
+ });
+ return arr;
+}
+function manhattan(a,b){return Math.abs(a.r-b.r)+Math.abs(a.c-b.c)}
+function isOutletAccessible(outlet,blocked,rows,cols){
+ // 出水口不能被障碍物封闭：边界内侧至少 1 个可走格，
+ // 且内侧周围 3x3 至少 3 个可走格。
+ const inside={
+  r:outlet.r+(outlet.dir===0?1:outlet.dir===2?-1:0),
+  c:outlet.c+(outlet.dir===3?1:outlet.dir===1?-1:0)
+ };
+ if(inside.r<0||inside.r>=rows||inside.c<0||inside.c>=cols)return false;
+ if(blocked.has(keyOf(inside.r,inside.c)))return false;
+ let openAround=0;
+ for(let dr=-1;dr<=1;dr++){
+  for(let dc=-1;dc<=1;dc++){
+   const rr=inside.r+dr,cc=inside.c+dc;
+   if(rr>=0&&rr<rows&&cc>=0&&cc<cols&&!blocked.has(keyOf(rr,cc)))openAround++;
+  }
+ }
+ return openAround>=3;
+}
+function choosePorts(rows,cols,blocked){
+ const inletPool=portCandidates(rows,cols,['left','top','right'],blocked);
+ const outletPool=portCandidates(rows,cols,['right','left','bottom'],blocked)
+  .filter(p=>isOutletAccessible(p,blocked,rows,cols));
+ let best=null,bestScore=-1;
+ for(let t=0;t<900;t++){
+  const ins=shuffle([...inletPool]).slice(0,3);
+  if(ins.length<3)break;
+  if(new Set(ins.map(p=>keyOf(p.r,p.c))).size<3)continue;
+
+  // 三个进水口至少分布在两个边上。
+  const inletSides=new Set(ins.map(p=>p.side));
+  if(inletSides.size<2)continue;
+
+  const out=outletPool[randInt(outletPool.length)];
+  if(!out||ins.some(p=>p.r===out.r&&p.c===out.c))continue;
+
+  // 不再追求四口尽量远，只要求有一定分散度；后续搜索最少组件路径。
+  const inletSpread=manhattan(ins[0],ins[1])+manhattan(ins[0],ins[2])+manhattan(ins[1],ins[2]);
+  const minOutDist=Math.min(...ins.map(p=>manhattan(p,out)));
+  const score=inletSpread*0.8+minOutDist*1.2+inletSides.size*8;
+
+  if(score>bestScore){
+   bestScore=score;
+   best={inlets:ins.map(x=>({...x})),outlets:[{...out}]};
+  }
+ }
+ return best;
+}
+function shortestPath(start,end,blocked,forbidden){
+ // BFS 在无权网格上天然得到最短路径。
+ // forbidden 用来避免后续路径穿过已占用水管，除非终点是合流点.
+ const q=[start],prev=new Map(),seen=new Set([keyOf(start.r,start.c)]),dirs=[[ -1,0],[0,1],[1,0],[0,-1]];
+ const endKey=keyOf(end.r,end.c);
+ while(q.length){
+  const p=q.shift(),pk=keyOf(p.r,p.c);
+  if(pk===endKey)break;
+  for(const [dr,dc] of shuffle([...dirs])){
+   const nr=p.r+dr,nc=p.c+dc,nk=keyOf(nr,nc);
+   if(nr<0||nr>=ROWS||nc<0||nc>=COLS||seen.has(nk)||blocked.has(nk))continue;
+   if(forbidden&&forbidden.has(nk)&&nk!==endKey)continue;
+   seen.add(nk);prev.set(nk,pk);q.push({r:nr,c:nc});
+  }
+ }
+ if(!seen.has(endKey))return null;
+ const path=[];let k=endKey;while(k){path.push(parseKey(k));if(k===keyOf(start.r,start.c))break;k=prev.get(k)}
+ return path.reverse();
+}
+function addPathEdges(path,edges,occupied){
+ for(let i=0;i<path.length-1;i++){edges.push([[path[i].r,path[i].c],[path[i+1].r,path[i+1].c]])}
+ path.forEach(p=>occupied.add(keyOf(p.r,p.c)));
+}
+function validateGenerated(edges,inlets,outlets){
+ const graph=buildGraphFromEdges(edges,inlets,outlets);
+ const inv=inventoryFromGraph(graph);
+ if(inv.bad.length)return null;
+ if(inv.counts.T!==2)return null;
+ // 确认所有格子度数不是 4，T 正好两个
+ return{graph,counts:inv.counts};
+}
+function edgeKey(a,b){
+ const k1=keyOf(a.r,a.c),k2=keyOf(b.r,b.c);
+ return k1<k2?`${k1}|${k2}`:`${k2}|${k1}`;
+}
+function uniqueEdges(edges){
+ const seen=new Set(),out=[];
+ edges.forEach(e=>{
+  const a={r:e[0][0],c:e[0][1]},b={r:e[1][0],c:e[1][1]};
+  const k=edgeKey(a,b);
+  if(!seen.has(k)){seen.add(k);out.push(e)}
+ });
+ return out;
+}
+function countComponentsFromCounts(counts){
+ return counts.I+counts.L+counts.T;
+}
+function generateCandidateTree(ports,blocked,m1,m2,order){
+ const edges=[],occupied=new Set();
+ function addPath(path){
+  if(!path)return false;
+  addPathEdges(path,edges,occupied);
+  return true;
+ }
+ let p;
+ // 固定拓扑：两个三通合流点。
+ // order[0] 和 order[1] 在 m1 合流；m1 与 m2 连通；order[2] 在 m2 合流；m2 到出水口。
+ p=shortestPath(ports.inlets[order[0]],m1,blocked,new Set([...occupied].filter(k=>k!==keyOf(m1.r,m1.c))));
+ if(!addPath(p))return null;
+
+ p=shortestPath(ports.inlets[order[1]],m1,blocked,new Set([...occupied].filter(k=>k!==keyOf(m1.r,m1.c))));
+ if(!addPath(p))return null;
+
+ p=shortestPath(m1,m2,blocked,new Set([...occupied].filter(k=>k!==keyOf(m1.r,m1.c)&&k!==keyOf(m2.r,m2.c))));
+ if(!addPath(p))return null;
+
+ p=shortestPath(ports.inlets[order[2]],m2,blocked,new Set([...occupied].filter(k=>k!==keyOf(m2.r,m2.c))));
+ if(!addPath(p))return null;
+
+ p=shortestPath(m2,ports.outlets[0],blocked,new Set([...occupied].filter(k=>k!==keyOf(m2.r,m2.c))));
+ if(!addPath(p))return null;
+
+ const finalEdges=uniqueEdges(edges);
+ const valid=validateGenerated(finalEdges,ports.inlets,ports.outlets);
+ if(!valid)return null;
+
+ return{
+  edges:finalEdges,
+  graph:valid.graph,
+  counts:valid.counts,
+  componentCount:countComponentsFromCounts(valid.counts)
+ };
+}
+function generateRoutedLevel2(){
+ ROWS=LEVEL2.rows;COLS=LEVEL2.cols;
+ for(let attempt=0;attempt<500;attempt++){
+  const blocked=makeRandomObstacles(ROWS,COLS);
+  const ports=choosePorts(ROWS,COLS,blocked);
+  if(!ports)continue;
+
+  const openCells=[];
+  for(let r=1;r<ROWS-1;r++){
+   for(let c=1;c<COLS-1;c++){
+    if(!blocked.has(keyOf(r,c)))openCells.push({r,c});
+   }
+  }
+
+  // 候选合流点靠近四口几何中心，目的是搜索“组件数量最少”的管网。
+  const avgR=(ports.inlets[0].r+ports.inlets[1].r+ports.inlets[2].r+ports.outlets[0].r)/4;
+  const avgC=(ports.inlets[0].c+ports.inlets[1].c+ports.inlets[2].c+ports.outlets[0].c)/4;
+  const candidates=openCells
+   .map(p=>({...p,score:Math.abs(p.r-avgR)+Math.abs(p.c-avgC)}))
+   .sort((a,b)=>a.score-b.score)
+   .slice(0,90);
+
+  let best=null;
+  const orders=[[0,1,2],[0,2,1],[1,2,0]];
+
+  for(const m1 of candidates){
+   for(const m2 of candidates){
+    if(keyOf(m1.r,m1.c)===keyOf(m2.r,m2.c))continue;
+    if(manhattan(m1,m2)<2)continue;
+    for(const order of orders){
+     const candidate=generateCandidateTree(ports,blocked,m1,m2,order);
+     if(!candidate)continue;
+     if(!best||candidate.componentCount<best.componentCount){
+      best={...candidate,m1,m2,order};
+     }
+    }
+   }
+  }
+
+  if(best){
+   return{
+    blocked,
+    edges:best.edges,
+    inlets:ports.inlets,
+    outlets:ports.outlets,
+    counts:best.counts,
+    graph:best.graph
+   };
+  }
+ }
+ throw new Error('生成第二关失败，请刷新页面重试');
+}
+function generateLevel2(){
+ const gen=generateRoutedLevel2();
+ currentInlets=gen.inlets.map(x=>({...x}));currentOutlets=gen.outlets.map(x=>({...x}));currentSolutionEdges=gen.edges;
+ currentSolutionCells=new Set([...gen.graph.keys()]);
+ gridState=[];for(let r=0;r<ROWS;r++){gridState[r]=[];for(let c=0;c<COLS;c++){const k=keyOf(r,c),isSol=currentSolutionCells.has(k);gridState[r][c]={type:gen.blocked.has(k)?'obstacle':'empty',isBroken:false,brokenTime:null,isSolution:isSol}}}
+ inventory={I:gen.counts.I,L:gen.counts.L,T:2};freezeCount=LEVEL2.freezeCount;pumpCount=LEVEL2.pumpCount;
+}
+
+function createGridDOM(){
+ const grid=document.getElementById('grid');grid.innerHTML='';grid.style.gridTemplateColumns=`repeat(${COLS},1fr)`;grid.style.gridTemplateRows=`repeat(${ROWS},1fr)`;grid.className=currentLevel===1?'grid-lvl1':'grid-lvl2';const boardWrapper=document.getElementById('board-wrapper');boardWrapper.style.aspectRatio=`${COLS}/${ROWS}`;boardWrapper.style.setProperty('--cols',COLS);boardWrapper.style.setProperty('--rows',ROWS);
+ const showHint=currentLevel===1;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  const cell=gridState[r][c],el=document.createElement('div');el.className='cell';el.onclick=()=>handleCellClick(r,c);if(cell.type==='obstacle')el.classList.add('obstacle');else if(showHint&&cell.isSolution)el.classList.add('solution-hint');
+  const wrap=document.createElement('div');wrap.className='pipe-wrapper';
+  const pipeI=document.createElement('div');pipeI.className='pipe-I';wrap.appendChild(pipeI);
+  const pipeL=document.createElement('div');pipeL.className='pipe-L';pipeL.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeL);
+  const pipeT=document.createElement('div');pipeT.className='pipe-T';pipeT.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeT);
+  el.appendChild(wrap);const leaks=[];for(let d=0;d<4;d++){const le=document.createElement('div');le.className=`leak-indicator leak-${d}`;le.textContent='💦';el.appendChild(le);leaks.push(le)}
+  grid.appendChild(el);cell.dom={cellEl:el,wrapper:wrap,pipeI,pipeL,pipeT,leaks};
+ }
+ requestAnimationFrame(updateBoardLayout);
+}
+function updateBoardLayout(){
+ const container=document.getElementById('game-container');
+ const boardWrapper=document.getElementById('board-wrapper');
+ if(!container||!boardWrapper)return;
+ const viewportHeight=window.visualViewport?.height||window.innerHeight||document.documentElement.clientHeight||0;
+ const containerStyle=getComputedStyle(container);
+ const containerInnerWidth=container.clientWidth-parseFloat(containerStyle.paddingLeft)-parseFloat(containerStyle.paddingRight);
+ const reservedIds=['toolbar','items-panel','tip-text'];
+ const reservedSelectors=['header'];
+ let reservedHeight=parseFloat(containerStyle.paddingTop)+parseFloat(containerStyle.paddingBottom);
+ reservedIds.forEach(id=>{const el=document.getElementById(id);if(el)reservedHeight+=el.offsetHeight});
+ reservedSelectors.forEach(selector=>{const el=document.querySelector(selector);if(el)reservedHeight+=el.offsetHeight});
+ reservedHeight+=22;
+ const availableHeight=Math.max(220,viewportHeight-reservedHeight);
+ const boardWidth=Math.max(180,Math.min(containerInnerWidth,availableHeight*COLS/ROWS));
+ boardWrapper.style.width=`${Math.floor(boardWidth)}px`;
+}
+function getPortClassByDir(dir){return dir===3?'port-left':dir===1?'port-right':dir===0?'port-top':'port-bottom'}
+function setPortCenterStyle(el,p,grid){
+ const cellWidth=grid.clientWidth/COLS;
+ const cellHeight=grid.clientHeight/ROWS;
+ const centerX=grid.offsetLeft+((p.c+.5)*cellWidth);
+ const centerY=grid.offsetTop+((p.r+.5)*cellHeight);
+ el.style.setProperty('--port-center-x',`${centerX}px`);
+ el.style.setProperty('--port-center-y',`${centerY}px`);
+}
+function renderWallPorts(){
+ document.querySelectorAll('.wall-port').forEach(e=>e.remove());const w=document.getElementById('board-wrapper'),grid=document.getElementById('grid');
+ if(!w||!grid)return;
+ currentInlets.forEach(p=>{const e=document.createElement('div');e.className=`wall-port wall-inlet ${getPortClassByDir(p.dir)}`;setPortCenterStyle(e,p,grid);w.appendChild(e)});
+ currentOutlets.forEach(p=>{const e=document.createElement('div');e.className=`wall-port wall-outlet ${getPortClassByDir(p.dir)}`;setPortCenterStyle(e,p,grid);w.appendChild(e)});
+}
+function selectTool(t,el){ensureAudioContext();startBGM();if(isPaused||isGameOver)return;currentTool=t;document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');playSound(440,'triangle',.08)}
+function getCellConnections(r,c){if(r<0||r>=ROWS||c<0||c>=COLS)return[0,0,0,0];const cell=gridState[r][c];if(!cell||cell.isBroken)return[0,0,0,0];if(cell.type==='pipe')return rotateDirections(getPipeBaseConnections(cell.pipeType),cell.rotation);return[0,0,0,0]}
+function calculateOptimalRotation(r,c,type){
+ const req=[0,0,0,0],offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
+ for(let d=0;d<4;d++){const nr=r+offs[d].dr,nc=c+offs[d].dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS){const n=gridState[nr][nc];if(n.type==='pipe'&&!n.isBroken&&getCellConnections(nr,nc)[offs[d].opp])req[d]=1}}
+ currentInlets.forEach(p=>{if(p.r===r&&p.c===c)req[p.dir]=1});currentOutlets.forEach(p=>{if(p.r===r&&p.c===c)req[p.dir]=1});
+ let best=0,score=-999;for(let a=0;a<360;a+=90){const conns=rotateDirections(getPipeBaseConnections(type),a);let s=0;for(let d=0;d<4;d++){if(req[d]&&conns[d])s+=3;if(req[d]&&!conns[d])s-=2;if(!req[d]&&conns[d])s-=.15}if(s>score){score=s;best=a}}return best;
+}
+
+function pipeHasAnyValidConnection(r,c){
+ const conns=getCellConnections(r,c);
+ const offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
+ for(let d=0;d<4;d++){
+  if(!conns[d])continue;
+  if(currentInlets.some(p=>p.r===r&&p.c===c&&p.dir===d))return true;
+  if(currentOutlets.some(p=>p.r===r&&p.c===c&&p.dir===d))return true;
+  const nr=r+offs[d].dr,nc=c+offs[d].dc;
+  if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&getCellConnections(nr,nc)[offs[d].opp])return true;
+ }
+ return false;
+}
+
+function handleCellClick(r,c){
+ ensureAudioContext();startBGM();
+ if(waitingForNextAfterReveal){currentLevel=2;resetGame();return}
+ if(isGameOver||isPaused)return;const cell=gridState[r][c];if(cell.type==='obstacle'){playSound(130,'square',.08);return}
+ const empty=cell.type==='empty'||cell.isBroken;
+ if(currentTool==='eraser'){if(cell.type==='pipe'&&!cell.isBroken){inventory[cell.pipeType]++;gridState[r][c]={type:'empty',isBroken:false,brokenTime:null,dom:cell.dom,isSolution:cell.isSolution};playSound(300,'sawtooth',.15)}}
+ else if(empty){if(inventory[currentTool]>0){inventory[currentTool]--;gridState[r][c]={type:'pipe',pipeType:currentTool,rotation:calculateOptimalRotation(r,c,currentTool),isBroken:false,brokenTime:null,dom:cell.dom,isSolution:cell.isSolution};if(pipeHasAnyValidConnection(r,c))playConnectSound();else playPipePlaceSound()}else playSound(150,'square',.2)}
+ else if(cell.type==='pipe'&&!cell.isBroken){if(cell.pipeType===currentTool){cell.rotation=(cell.rotation+90)%360;if(pipeHasAnyValidConnection(r,c))playConnectSound();else playSound(800,'sine',.08)}else if(inventory[currentTool]>0){inventory[cell.pipeType]++;inventory[currentTool]--;cell.pipeType=currentTool;cell.rotation=calculateOptimalRotation(r,c,currentTool);if(pipeHasAnyValidConnection(r,c))playConnectSound();else playPipePlaceSound()}else playSound(150,'square',.2)}
+ updateGameState();
+}
+function checkConnectivity(){
+ const visited=new Set(),q=[],offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
+ currentInlets.forEach(p=>{if(getCellConnections(p.r,p.c)[p.dir]){const k=keyOf(p.r,p.c);visited.add(k);q.push({r:p.r,c:p.c})}});
+ while(q.length){const p=q.shift(),conns=getCellConnections(p.r,p.c);for(let d=0;d<4;d++)if(conns[d]){const nr=p.r+offs[d].dr,nc=p.c+offs[d].dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&getCellConnections(nr,nc)[offs[d].opp]){const k=keyOf(nr,nc);if(!visited.has(k)){visited.add(k);q.push({r:nr,c:nc})}}}}
+ return visited;
+}
+function findLeakPoints(flooded){
+ const leaks=[],offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
+ flooded.forEach(k=>{const{r,c}=parseKey(k),cell=gridState[r][c];if(!cell||cell.isBroken)return;const conns=getCellConnections(r,c);for(let d=0;d<4;d++)if(conns[d]){if(currentOutlets.some(p=>p.r===r&&p.c===c&&p.dir===d)||currentInlets.some(p=>p.r===r&&p.c===c&&p.dir===d))continue;const nr=r+offs[d].dr,nc=c+offs[d].dc;let leak=false;if(nr<0||nr>=ROWS||nc<0||nc>=COLS)leak=true;else if(!getCellConnections(nr,nc)[offs[d].opp])leak=true;if(leak)leaks.push({r,c,dir:d})}});
+ return leaks;
+}
+function getFloodedComponents(flooded){
+ const visited=new Set(),components=[],offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
+ flooded.forEach(start=>{if(visited.has(start))return;const q=[start],cells=[];visited.add(start);let hasInlet=false,hasOutlet=false,hasLeak=false;while(q.length){const k=q.shift();cells.push(k);const{r,c}=parseKey(k),conns=getCellConnections(r,c);for(let d=0;d<4;d++)if(conns[d]){const isIn=currentInlets.some(p=>p.r===r&&p.c===c&&p.dir===d),isOut=currentOutlets.some(p=>p.r===r&&p.c===c&&p.dir===d);if(isIn)hasInlet=true;if(isOut)hasOutlet=true;const nr=r+offs[d].dr,nc=c+offs[d].dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS){if(getCellConnections(nr,nc)[offs[d].opp]){const nk=keyOf(nr,nc);if(flooded.has(nk)&&!visited.has(nk)){visited.add(nk);q.push(nk)}}else if(!isIn&&!isOut)hasLeak=true}else if(!isIn&&!isOut)hasLeak=true}}components.push({cells,hasInlet,hasOutlet,hasLeak})});
+ return components;
+}
+function updateGameState(){
+ const flooded=checkConnectivity(),components=getFloodedComponents(flooded);let broken=false;
+ for(const comp of components)if(comp.hasInlet&&!comp.hasOutlet&&!comp.hasLeak){const cand=[];comp.cells.forEach(k=>{const{r,c}=parseKey(k),cell=gridState[r][c];if(cell.type==='pipe'&&!cell.isBroken&&(cell.pipeType==='I'||cell.pipeType==='L'))cand.push(cell)});if(cand.length){const ch=cand[randInt(cand.length)];ch.isBroken=true;ch.brokenTime=Date.now();broken=true}}
+ if(broken){playDangerSound();return updateGameState()}
+ renderGrid(flooded);
+ const reaches=currentOutlets.some(p=>flooded.has(keyOf(p.r,p.c))&&getCellConnections(p.r,p.c)[p.dir]);
+ const allIn=currentLevel===1||currentInlets.every(p=>flooded.has(keyOf(p.r,p.c))&&getCellConnections(p.r,p.c)[p.dir]);
+ if(reaches&&allIn&&findLeakPoints(flooded).length===0){document.querySelectorAll('.wall-outlet').forEach(e=>e.classList.add('flooded-outlet'));endGame(true)}
+}
+function renderGrid(flooded=new Set()){
+ document.getElementById('badge-I').textContent=`x${inventory.I}`;document.getElementById('badge-L').textContent=`x${inventory.L}`;document.getElementById('badge-T').textContent=`x${inventory.T}`;
+ ['I','L','T'].forEach(t=>document.getElementById(`btn-${t}`).classList.toggle('empty-inventory',inventory[t]===0));
+ const leaks=findLeakPoints(flooded),showHint=currentLevel===1;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const cell=gridState[r][c],dom=cell.dom;if(!dom)continue;let cls='cell';if(flooded.has(keyOf(r,c)))cls+=' flooded';if(cell.type==='obstacle')cls+=' obstacle';if(cell.isBroken)cls+=' pipe-shatter';if(showHint&&cell.isSolution&&cell.type!=='obstacle')cls+=' solution-hint';dom.cellEl.className=cls;
+  if(cell.type==='pipe'){dom.wrapper.style.display='block';dom.wrapper.className=`pipe-wrapper rot-${cell.rotation}`;dom.pipeI.style.display=cell.pipeType==='I'?'block':'none';dom.pipeL.style.display=cell.pipeType==='L'?'block':'none';dom.pipeT.style.display=cell.pipeType==='T'?'block':'none'}else dom.wrapper.style.display='none';
+  const cellLeaks=leaks.filter(l=>l.r===r&&l.c===c);for(let d=0;d<4;d++)dom.leaks[d].style.display=cellLeaks.some(l=>l.dir===d)?'block':'none';
+ }
+}
+function setPauseState(nextPaused){
+ if(!hasStartedGame)return;
+ isPaused=nextPaused;
+ const board=document.getElementById('board-wrapper');
+ const overlay=document.getElementById('pause-overlay');
+ const btn=document.getElementById('pause-toggle');
+ board.classList.toggle('paused',isPaused);
+ overlay.classList.toggle('active',isPaused);
+ btn.classList.toggle('paused',isPaused);
+ btn.textContent=isPaused?'继续':'暂停';
+}
+function togglePause(){
+ ensureAudioContext();
+ startBGM();
+ if(!hasStartedGame||isGameOver)return;
+ setPauseState(!isPaused);
+ playSound(isPaused?640:420,'sine',.08);
+}
+function useFreeze(){ensureAudioContext();startBGM();if(isGameOver||isPaused||isFrozen||freezeCount<=0){playSound(150,'square',.2);return}freezeCount--;document.getElementById('count-freeze').textContent=freezeCount;document.getElementById('btn-freeze').classList.toggle('disabled',freezeCount<=0);isFrozen=true;freezeTicksRemaining=60;document.getElementById('board-wrapper').classList.add('frozen');playFreezeSound()}
+function usePump(){ensureAudioContext();startBGM();if(isGameOver||isPaused||pumpCount<=0||waterLevel<=0){playSound(150,'square',.2);return}pumpCount--;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);const dur=(currentLevel===1?LEVEL1:LEVEL2).duration,total=dur*10;currentStep=Math.max(0,currentStep-total*.5);waterLevel=currentStep/total*100;document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);playPumpSound();updateGameState()}
+function startTimer(){
+ const interval=100,dur=(currentLevel===1?LEVEL1:LEVEL2).duration,total=dur*10;currentStep=0;clearInterval(timerInterval);
+ timerInterval=setInterval(()=>{if(isGameOver||isPaused)return;const now=Date.now();for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const cell=gridState[r][c];if(cell.isBroken&&now-cell.brokenTime>=1500){gridState[r][c]={type:'empty',isBroken:false,brokenTime:null,dom:cell.dom,isSolution:cell.isSolution}}}
+ if(isFrozen){freezeTicksRemaining--;if(freezeTicksRemaining<=0){isFrozen=false;document.getElementById('board-wrapper').classList.remove('frozen')}}
+ const flooded=checkConnectivity(),leakCount=findLeakPoints(flooded).length;let speed=isFrozen?0:(1+leakCount*.28)*1.2;if(currentLevel===2)speed*=0.82;currentStep+=speed;waterLevel=Math.min(currentStep/total*100,100);
+ document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);const left=Math.ceil(Math.max(0,total-currentStep)/10);document.getElementById('timer-text').textContent=left;
+ const w=document.getElementById('water-text'),t=document.getElementById('timer-text');w.style.color=leakCount>0&&!isFrozen?'#e74c3c':'#ecf0f1';w.style.transform=leakCount>0&&!isFrozen?'scale(1.2)':'scale(1)';t.style.color=left<=15&&currentLevel===2&&!isFrozen?'#e74c3c':'#ecf0f1';t.style.transform=left<=15&&currentLevel===2&&!isFrozen?'scale(1.15)':'scale(1)';
+ renderGrid(flooded);if(waterLevel>=100)endGame(false);
+ },interval)
+}
+function endGame(win){
+ if(isGameOver)return;isGameOver=true;isPaused=false;clearInterval(timerInterval);levelWon=win;const m=document.getElementById('modal'),title=document.getElementById('modal-title'),btn=document.getElementById('modal-btn');m.className='';m.style.display='flex';setPauseState(false);
+ if(win){let stars=waterLevel<=25?'⭐⭐⭐':waterLevel<=60?'⭐⭐':'⭐';const rem=inventory.I+inventory.L+inventory.T,levelScore=Math.round((100-waterLevel)*10)+currentLevel*100+(rem<=2?300:0);score+=levelScore;document.getElementById('score-text').textContent=score;
+  if(currentLevel===1){title.innerHTML=`🎉 教学关通过！<br><span style="font-size:20px;color:#f1c40f">${stars}</span><br><span style="font-size:13px;color:#bdc3c7">下一关需要把所有进水口都接到出水口。</span>`;btn.textContent='进入第二关'}
+  else{title.innerHTML=`🏆 第二关破解！<br><span style="font-size:20px;color:#f1c40f">${stars}</span><br><span style="font-size:13px;color:#bdc3c7">总分: ${score}</span><br><span style="font-size:12px;color:#2ecc71">点击后刷新新的第二关，不返回第一关。</span>`;btn.textContent='刷新第二关'}
+  playSound(523,'sine',.15);setTimeout(()=>playSound(659,'sine',.15),150);setTimeout(()=>playSound(784,'sine',.3),300)
+ }else{m.className='fail-modal';title.innerHTML=`💀 房间被淹没了...<br><span style="font-size:14px;color:#bdc3c7">敞口会漏水加速上涨；完全闭合且无出口的通水死路会随机爆管。</span>`;btn.textContent='重新挑战';playSound(300,'sawtooth',.4);setTimeout(()=>playSound(200,'sawtooth',.6),200)}
+}
+function nextLevelOrReset(){if(levelWon){if(currentLevel===1)currentLevel=2;else currentLevel=2}else{if(currentLevel===1)score=0}document.getElementById('level-text').textContent=currentLevel;document.getElementById('score-text').textContent=score;resetGame()}
+function resetGame(){
+ isGameOver=false;levelWon=false;answerRevealMode=false;waitingForNextAfterReveal=false;waterLevel=0;currentStep=0;isFrozen=false;freezeTicksRemaining=0;isPaused=false;clearInterval(timerInterval);document.getElementById('board-wrapper').classList.remove('frozen');document.getElementById('water-mask').style.height='0%';document.getElementById('water-text').textContent='0';document.getElementById('modal').className='';document.getElementById('modal').style.display='none';document.querySelectorAll('.wall-outlet').forEach(e=>e.classList.remove('flooded-outlet'));setPauseState(false);
+ if(currentLevel===1){generateLevel1();document.getElementById('timer-text').textContent=LEVEL1.duration;document.getElementById('tip-text').innerHTML='第一关是教学关：黄色格子就是唯一通道，组件刚好够用。点击已放好的同类水管可旋转。'}
+ else{generateLevel2();document.getElementById('timer-text').textContent=LEVEL2.duration;document.getElementById('tip-text').innerHTML='<strong>第二关：</strong>把所有进水口都连到出水口，小心漏水和爆管。'}
+ document.getElementById('count-freeze').textContent=freezeCount;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-freeze').classList.toggle('disabled',freezeCount<=0);document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);
+ createGridDOM();updateBoardLayout();renderWallPorts();renderGrid();startTimer();
+}
+function updateOrientationHint(){
+ const shouldWarn=window.matchMedia('(orientation: landscape)').matches&&window.innerWidth<980;
+ document.body.classList.toggle('landscape-warning',shouldWarn);
+}
+function hideBrowserChrome(){
+ if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone)return;
+ setTimeout(()=>window.scrollTo(0,1),60);
+}
+function registerPwaSupport(){
+ updateOrientationHint();
+ hideBrowserChrome();
+ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
+  navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+ }
+}
+function bindUiEvents(){
+ const introBtn=document.getElementById('intro-start-btn');
+ const pauseBtn=document.getElementById('pause-toggle');
+ const resumeBtn=document.getElementById('pause-resume-btn');
+ if(introBtn)introBtn.addEventListener('click',beginGameFromIntro);
+ if(pauseBtn)pauseBtn.addEventListener('click',togglePause);
+ if(resumeBtn)resumeBtn.addEventListener('click',togglePause);
+ window.beginGameFromIntro=beginGameFromIntro;
+ window.togglePause=togglePause;
+ window.nextLevelOrReset=nextLevelOrReset;
+ window.revealAnswer=revealAnswer;
+}
+function bootstrapUi(){
+ document.getElementById('level-text').textContent=currentLevel;
+ document.getElementById('score-text').textContent=score;
+ bindUiEvents();
+ registerPwaSupport();
+ const handleViewportChange=()=>requestAnimationFrame(()=>{updateBoardLayout();renderWallPorts();updateOrientationHint();hideBrowserChrome()});
+ window.addEventListener('resize',handleViewportChange);
+ window.visualViewport?.addEventListener('resize',handleViewportChange);
+ window.addEventListener('orientationchange',handleViewportChange);
+ window.addEventListener('pageshow',()=>setTimeout(hideBrowserChrome,0));
+ setTimeout(()=>beginGameFromIntro(),1800);
+}
+if(document.readyState==='loading'){
+ document.addEventListener('DOMContentLoaded',bootstrapUi,{once:true});
+}else{
+ bootstrapUi();
+}
+</script>
+</body>
+</html>
