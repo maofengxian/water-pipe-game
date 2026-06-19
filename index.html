@@ -30,6 +30,7 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
 #board-wrapper.paused{background:#02070b;box-shadow:0 12px 30px rgba(0,0,0,.62)}
 #board-wrapper.paused #grid,
 #board-wrapper.paused #water-mask,
+#board-wrapper.paused #water-effects-canvas,
 #board-wrapper.paused .wall-port{opacity:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 #grid{display:grid;width:100%;height:100%;background:rgba(44,62,80,.45)}
@@ -42,7 +43,19 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
  box-shadow:inset 0 1px 1px rgba(255,255,255,.08), inset 0 -2px 4px rgba(0,0,0,.32);
 }
 .grid-lvl1 .obstacle:after,.grid-lvl2 .obstacle:after{content:'';position:absolute;inset:0;border-radius:2px;background:linear-gradient(180deg,rgba(255,120,70,.12),rgba(120,10,0,.08))}
-#water-mask{position:absolute;left:0;bottom:0;width:100%;height:0%;background:rgba(41,128,185,.48);backdrop-filter:blur(1px);pointer-events:none;transition:height .1s linear;z-index:5;border-top:3px solid #3498db}
+#water-mask{position:absolute;left:0;bottom:0;width:100%;height:0%;background:
+ linear-gradient(180deg,rgba(143,224,255,.2) 0%,rgba(88,183,233,.16) 18%,rgba(41,128,185,.52) 56%,rgba(22,93,145,.7) 100%);
+ backdrop-filter:blur(1px);pointer-events:none;transition:height .1s linear;z-index:5;border-top:2px solid rgba(180,235,255,.9);box-shadow:0 -8px 18px rgba(76,178,255,.15)}
+#water-mask::before,#water-mask::after{content:'';position:absolute;left:-12%;width:124%;pointer-events:none}
+#water-mask::before{top:-14px;height:26px;background:
+ radial-gradient(circle at 10px 18px, rgba(215,247,255,.8) 0 6px, transparent 7px),
+ radial-gradient(circle at 45px 10px, rgba(111,206,255,.42) 0 8px, transparent 9px),
+ radial-gradient(circle at 78px 17px, rgba(255,255,255,.55) 0 5px, transparent 6px);
+ background-size:92px 24px;opacity:.8;filter:blur(.2px);animation:waterWaveDrift 4.4s linear infinite}
+#water-mask::after{top:-8px;height:18px;background:linear-gradient(180deg,rgba(255,255,255,.58),rgba(255,255,255,0) 78%);opacity:.42;filter:blur(2px);animation:waterWaveSwell 2.6s ease-in-out infinite}
+@keyframes waterWaveDrift{from{transform:translateX(0)}to{transform:translateX(-92px)}}
+@keyframes waterWaveSwell{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(-2px) scaleX(1.015)}}
+#water-effects-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;opacity:.95}
 .wall-port{position:absolute;--port-size:28px;--port-shift-x:0px;--port-shift-y:0px;width:var(--port-size);height:var(--port-size);display:flex;align-items:center;justify-content:center;z-index:8;font-size:14px;border-radius:4px;pointer-events:none;background:none;overflow:hidden;transform-origin:center center}
 .wall-port::before{content:'';position:absolute;inset:16%;background-repeat:no-repeat;background-size:contain;background-position:left center;transform:translate(var(--port-shift-x),var(--port-shift-y))}
 .wall-inlet{
@@ -79,11 +92,6 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
 .flooded .pipe-I,.flooded .pipe-L .seg-v,.flooded .pipe-L .seg-h,.flooded .pipe-L .corner,.flooded .pipe-T .seg-v,.flooded .pipe-T .seg-h,.flooded .pipe-T .corner{background:#2980b9!important;box-shadow:0 0 8px #3498db;animation:pulse 1.5s infinite ease-in-out}
 .pipe-shatter .pipe-wrapper{animation:shatter 1.5s forwards!important}
 @keyframes shatter{0%{filter:grayscale(.6) sepia(1) hue-rotate(-50deg) saturate(4);transform:scale(1);opacity:1}15%,45%,75%{transform:scale(.95) translate(2px,-1px) rotate(3deg);opacity:.8}30%,60%{transform:scale(.95) translate(-2px,1px) rotate(-3deg);opacity:.8}100%{filter:grayscale(1);transform:scale(.7);opacity:0}}
-.leak-indicator{position:absolute;z-index:6;animation:spray .5s infinite alternate ease-in-out;pointer-events:none;display:none}
-@keyframes spray{0%{transform:scale(.7) translate(0,0);opacity:.6}100%{transform:scale(1.25) translate(var(--tx),var(--ty));opacity:1}}
-.grid-lvl1 .leak-indicator{font-size:18px}.grid-lvl2 .leak-indicator{font-size:10px}
-.grid-lvl1 .leak-0{top:-12px;left:calc(50% - 9px);--tx:0;--ty:-8px}.grid-lvl1 .leak-1{right:-12px;top:calc(50% - 9px);--tx:8px;--ty:0}.grid-lvl1 .leak-2{bottom:-12px;left:calc(50% - 9px);--tx:0;--ty:8px}.grid-lvl1 .leak-3{left:-12px;top:calc(50% - 9px);--tx:-8px;--ty:0}
-.grid-lvl2 .leak-0{top:-8px;left:calc(50% - 5px);--tx:0;--ty:-5px}.grid-lvl2 .leak-1{right:-8px;top:calc(50% - 5px);--tx:5px;--ty:0}.grid-lvl2 .leak-2{bottom:-8px;left:calc(50% - 5px);--tx:0;--ty:5px}.grid-lvl2 .leak-3{left:-8px;top:calc(50% - 5px);--tx:-5px;--ty:0}
 .rot-0{transform:rotate(0)}.rot-90{transform:rotate(90deg)}.rot-180{transform:rotate(180deg)}.rot-270{transform:rotate(270deg)}
 #toolbar{width:100%;display:flex;gap:5px;margin-top:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.07);padding:6px;border-radius:10px;z-index:9}
 .tool-btn{flex:1;background:#34495e;border:2px solid #7f8c8d;color:#ecf0f1;padding:5px 2px;border-radius:8px;cursor:pointer;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.2s}
@@ -431,7 +439,7 @@ body.landscape-warning #game-container{visibility:hidden}
 <button id="pause-toggle" type="button">暂停</button>
 </header>
 <div id="board-wrapper">
-<div id="grid"></div><div id="water-mask"></div>
+<div id="grid"></div><div id="water-mask"></div><canvas id="water-effects-canvas"></canvas>
 <div id="modal"><h2 id="modal-title">游戏结束</h2><button id="modal-btn" onclick="nextLevelOrReset()">继续</button><button id="modal-btn-reveal" onclick="revealAnswer()">我不服气</button></div>
 <div id="pause-overlay"><div class="pause-card"><h2>PAUSE</h2><p>当前局面已完全隐藏，水位与计时都已停止。等你想好策略，再继续。</p><button id="pause-resume-btn" type="button">继续游戏</button></div></div>
 </div>
@@ -464,6 +472,246 @@ let answerRevealMode=false;
 let waitingForNextAfterReveal=false;
 let isPaused=false;
 let hasStartedGame=false;
+let waterEffects=null;
+
+class WaterParticleSystem{
+ constructor(canvas){
+  this.canvas=canvas;
+  this.ctx=canvas.getContext('2d',{alpha:true});
+  this.particles=[];
+  this.maxParticles=280;
+  this.boardRect={width:0,height:0};
+  this.deviceScale=1;
+  this.scene={flooded:new Set(),leaks:[],brokenCells:[],inlets:[]};
+  this.waterLevel=0;
+  this.lastFrame=0;
+  this.lastEmit=0;
+  this.running=false;
+  this.resize();
+  this.loop=this.loop.bind(this);
+ }
+ resize(){
+  const board=this.canvas.parentElement;
+  if(!board)return;
+  const width=Math.max(1,Math.round(board.clientWidth));
+  const height=Math.max(1,Math.round(board.clientHeight));
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  if(width===this.boardRect.width&&height===this.boardRect.height&&dpr===this.deviceScale)return;
+  this.boardRect={width,height};
+  this.deviceScale=dpr;
+  this.canvas.width=Math.round(width*dpr);
+  this.canvas.height=Math.round(height*dpr);
+  this.ctx.setTransform(dpr,0,0,dpr,0,0);
+ }
+ start(){
+  if(this.running)return;
+  this.running=true;
+  this.lastFrame=performance.now();
+  this.lastEmit=this.lastFrame;
+  requestAnimationFrame(this.loop);
+ }
+ stop(){this.running=false}
+ reset(){
+  this.particles.length=0;
+  this.clear();
+ }
+ clear(){
+  this.ctx.clearRect(0,0,this.boardRect.width,this.boardRect.height);
+ }
+ setScene(scene){
+  this.scene=scene;
+ }
+ setWaterLevel(level){
+  this.waterLevel=level;
+ }
+ getCellSize(){
+  return{
+   cellW:this.boardRect.width/Math.max(COLS,1),
+   cellH:this.boardRect.height/Math.max(ROWS,1)
+  };
+ }
+ getDirectionVector(dir){
+  if(dir===3)return{x:1,y:0};
+  if(dir===1)return{x:-1,y:0};
+  if(dir===0)return{x:0,y:1};
+  return{x:0,y:-1};
+ }
+ getPortOrigin(port,offset=.36){
+  const {cellW,cellH}=this.getCellSize();
+  const cx=(port.c+.5)*cellW;
+  const cy=(port.r+.5)*cellH;
+  if(port.dir===3)return{x:port.c*cellW+cellW*.08,y:cy};
+  if(port.dir===1)return{x:(port.c+1)*cellW-cellW*.08,y:cy};
+  if(port.dir===0)return{x:cx,y:port.r*cellH+cellH*.08};
+  return{x:cx,y:(port.r+1)*cellH-cellH*.08-offset};
+ }
+ getLeakOrigin(leak){
+  const {cellW,cellH}=this.getCellSize();
+  const cx=(leak.c+.5)*cellW;
+  const cy=(leak.r+.5)*cellH;
+  if(leak.dir===3)return{x:leak.c*cellW+2,y:cy};
+  if(leak.dir===1)return{x:(leak.c+1)*cellW-2,y:cy};
+  if(leak.dir===0)return{x:cx,y:leak.r*cellH+2};
+  return{x:cx,y:(leak.r+1)*cellH-2};
+ }
+ emitParticle(x,y,vx,vy,opts={}){
+  if(this.particles.length>=this.maxParticles)this.particles.shift();
+  this.particles.push({
+   x,y,vx,vy,
+   life:opts.life??(.48+Math.random()*.38),
+   age:0,
+   radius:opts.radius??(1.4+Math.random()*1.8),
+   alpha:opts.alpha??(.7+Math.random()*.2),
+   hue:opts.hue??(195+Math.random()*20),
+   trail:opts.trail??(6+Math.random()*10),
+   drag:opts.drag??.988,
+   bounce:opts.bounce??.34,
+   gravity:opts.gravity??780,
+   stopped:false
+  });
+ }
+ emitSpray(origin,dir,count,speedMin,speedMax,opts={}){
+  const vec=this.getDirectionVector(dir);
+  const cross={x:-vec.y,y:vec.x};
+  for(let i=0;i<count;i++){
+   const speed=speedMin+Math.random()*(speedMax-speedMin);
+   const spread=(Math.random()-.5)*(opts.spread??.9);
+   const lift=(Math.random()-.5)*(opts.lift??24);
+   const vx=vec.x*speed+cross.x*speed*spread+lift*(Math.random()-.5)*.12;
+   const vy=vec.y*speed+cross.y*speed*spread+lift;
+   this.emitParticle(
+    origin.x+(Math.random()-.5)*(opts.originJitter??8),
+    origin.y+(Math.random()-.5)*(opts.originJitter??8),
+    vx,vy,opts
+   );
+  }
+ }
+ isObstacleAtPixel(x,y){
+  const {cellW,cellH}=this.getCellSize();
+  const c=Math.floor(x/cellW);
+  const r=Math.floor(y/cellH);
+  if(r<0||r>=ROWS||c<0||c>=COLS)return false;
+  return gridState[r]?.[c]?.type==='obstacle';
+ }
+ updateParticles(dt){
+  const width=this.boardRect.width,height=this.boardRect.height;
+  for(let i=this.particles.length-1;i>=0;i--){
+   const p=this.particles[i];
+   p.age+=dt;
+   if(p.age>=p.life){this.particles.splice(i,1);continue}
+   if(p.stopped){
+    p.alpha*=.965;
+    if(p.alpha<.06){this.particles.splice(i,1);continue}
+    continue;
+   }
+   p.vy+=p.gravity*dt;
+   p.vx*=p.drag;
+   p.vy*=.997;
+   let nx=p.x+p.vx*dt;
+   let ny=p.y+p.vy*dt;
+   if(nx<0||nx>width){p.vx*=-p.bounce;nx=Math.max(0,Math.min(width,nx))}
+   if(ny<0){p.vy*=-p.bounce;ny=0}
+   if(ny>height){
+    if(Math.abs(p.vy)<120)p.stopped=true;
+    p.vy*=-Math.max(.08,p.bounce*.18);
+    p.vx*=.8;
+    ny=height;
+   }
+   if(this.isObstacleAtPixel(nx,ny)){
+    const hitX=this.isObstacleAtPixel(nx,p.y);
+    const hitY=this.isObstacleAtPixel(p.x,ny);
+    if(hitX)p.vx*=-p.bounce;
+    if(hitY||!hitX)p.vy*=-Math.max(.12,p.bounce*.72);
+    if(Math.abs(p.vx)+Math.abs(p.vy)<90)p.stopped=true;
+    nx=p.x+p.vx*dt*.35;
+    ny=p.y+p.vy*dt*.35;
+    if(this.isObstacleAtPixel(nx,ny)){nx=p.x;ny=p.y;p.stopped=true}
+   }
+   p.x=nx;
+   p.y=ny;
+  }
+ }
+ emitContinuous(now){
+  const elapsed=now-this.lastEmit;
+  if(elapsed<32)return;
+  this.lastEmit=now;
+  if(isPaused||!hasStartedGame)return;
+  this.scene.inlets.forEach(inlet=>{
+   const origin=this.getPortOrigin(inlet);
+   this.emitSpray(origin,inlet.dir,3,58,128,{life:.65,radius:1.6,trail:12,originJitter:6,spread:.42,gravity:820,bounce:.28});
+  });
+  this.scene.leaks.forEach(leak=>{
+   const origin=this.getLeakOrigin(leak);
+   this.emitSpray(origin,leak.dir,3,82,158,{life:.44,radius:1.5,trail:10,originJitter:5,spread:.5,gravity:840,bounce:.24});
+  });
+  this.scene.brokenCells.forEach(leak=>{
+   const origin=this.getLeakOrigin(leak);
+   this.emitSpray(origin,leak.dir,6,120,220,{life:.4,radius:1.8,trail:14,originJitter:8,spread:.72,gravity:860,bounce:.3,alpha:.88});
+  });
+ }
+ drawWaterline(now){
+  const width=this.boardRect.width,height=this.boardRect.height;
+  if(!width||!height||this.waterLevel<=0)return;
+  const t=now*.0015;
+  const waterHeight=height*(this.waterLevel/100);
+  const baseY=height-waterHeight;
+  const amplitude=Math.max(2,Math.min(8,height*.014));
+  const waveLen=Math.max(34,width*.16);
+  this.ctx.save();
+  this.ctx.beginPath();
+  this.ctx.moveTo(0,height);
+  this.ctx.lineTo(0,baseY);
+  for(let x=0;x<=width+8;x+=8){
+   const y=baseY+Math.sin((x/waveLen)+t)*amplitude+Math.sin((x/(waveLen*.58))-t*1.8)*(amplitude*.45);
+   this.ctx.lineTo(x,y);
+  }
+  this.ctx.lineTo(width,height);
+  this.ctx.closePath();
+  const fill=this.ctx.createLinearGradient(0,baseY-12,0,height);
+  fill.addColorStop(0,'rgba(164,230,255,0.14)');
+  fill.addColorStop(.18,'rgba(74,182,235,0.08)');
+  fill.addColorStop(1,'rgba(24,105,170,0)');
+  this.ctx.fillStyle=fill;
+  this.ctx.fill();
+  this.ctx.strokeStyle='rgba(214,247,255,0.52)';
+  this.ctx.lineWidth=1.25;
+  this.ctx.stroke();
+  this.ctx.restore();
+ }
+ drawParticles(){
+  for(const p of this.particles){
+   const lifeRatio=1-(p.age/p.life);
+   const alpha=Math.max(0,p.alpha*lifeRatio);
+   if(alpha<=.02)continue;
+   const tx=p.x-p.vx*.016;
+   const ty=p.y-p.vy*.016;
+   this.ctx.strokeStyle=`hsla(${p.hue},85%,65%,${alpha*.38})`;
+   this.ctx.lineWidth=Math.max(1,p.radius*.8);
+   this.ctx.beginPath();
+   this.ctx.moveTo(tx,ty);
+   this.ctx.lineTo(p.x,p.y);
+   this.ctx.stroke();
+   this.ctx.fillStyle=`hsla(${p.hue},92%,66%,${alpha})`;
+   this.ctx.beginPath();
+   this.ctx.arc(p.x,p.y,p.radius*lifeRatio+.4,0,Math.PI*2);
+   this.ctx.fill();
+  }
+ }
+ loop(now){
+  if(!this.running)return;
+  this.resize();
+  const dt=Math.min((now-this.lastFrame)/1000,.028);
+  this.lastFrame=now;
+  this.emitContinuous(now);
+  if(!isPaused){
+   this.updateParticles(dt);
+  }
+  this.clear();
+  this.drawWaterline(now);
+  this.drawParticles();
+  requestAnimationFrame(this.loop);
+ }
+}
 
 function keyOf(r,c){return `${r},${c}`}
 function parseKey(k){const [r,c]=k.split(',').map(Number);return{r,c}}
@@ -1001,8 +1249,8 @@ function createGridDOM(){
   const pipeI=document.createElement('div');pipeI.className='pipe-I';wrap.appendChild(pipeI);
   const pipeL=document.createElement('div');pipeL.className='pipe-L';pipeL.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeL);
   const pipeT=document.createElement('div');pipeT.className='pipe-T';pipeT.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeT);
-  el.appendChild(wrap);const leaks=[];for(let d=0;d<4;d++){const le=document.createElement('div');le.className=`leak-indicator leak-${d}`;le.textContent='💦';el.appendChild(le);leaks.push(le)}
-  grid.appendChild(el);cell.dom={cellEl:el,wrapper:wrap,pipeI,pipeL,pipeT,leaks};
+  el.appendChild(wrap);
+  grid.appendChild(el);cell.dom={cellEl:el,wrapper:wrap,pipeI,pipeL,pipeT};
  }
  requestAnimationFrame(updateBoardLayout);
 }
@@ -1022,6 +1270,7 @@ function updateBoardLayout(){
  const availableHeight=Math.max(220,viewportHeight-reservedHeight);
  const boardWidth=Math.max(180,Math.min(containerInnerWidth,availableHeight*COLS/ROWS));
  boardWrapper.style.width=`${Math.floor(boardWidth)}px`;
+ waterEffects?.resize();
 }
 function getPortClassByDir(dir){return dir===3?'port-left':dir===1?'port-right':dir===0?'port-top':'port-bottom'}
 function setPortCenterStyle(el,p,grid){
@@ -1040,6 +1289,10 @@ function renderWallPorts(){
 }
 function selectTool(t,el){ensureAudioContext();startBGM();if(isPaused||isGameOver)return;currentTool=t;document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');playSound(440,'triangle',.08)}
 function getCellConnections(r,c){if(r<0||r>=ROWS||c<0||c>=COLS)return[0,0,0,0];const cell=gridState[r][c];if(!cell||cell.isBroken)return[0,0,0,0];if(cell.type==='pipe')return rotateDirections(getPipeBaseConnections(cell.pipeType),cell.rotation);return[0,0,0,0]}
+function getPipeConnectionsForVisual(cell){
+ if(!cell||cell.type!=='pipe')return[0,0,0,0];
+ return rotateDirections(getPipeBaseConnections(cell.pipeType),cell.rotation);
+}
 function calculateOptimalRotation(r,c,type){
  const req=[0,0,0,0],offs=[{dr:-1,dc:0,opp:2},{dr:0,dc:1,opp:3},{dr:1,dc:0,opp:0},{dr:0,dc:-1,opp:1}];
  for(let d=0;d<4;d++){const nr=r+offs[d].dr,nc=c+offs[d].dc;if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS){const n=gridState[nr][nc];if(n.type==='pipe'&&!n.isBroken&&getCellConnections(nr,nc)[offs[d].opp])req[d]=1}}
@@ -1099,10 +1352,18 @@ function renderGrid(flooded=new Set()){
  document.getElementById('badge-I').textContent=`x${inventory.I}`;document.getElementById('badge-L').textContent=`x${inventory.L}`;document.getElementById('badge-T').textContent=`x${inventory.T}`;
  ['I','L','T'].forEach(t=>document.getElementById(`btn-${t}`).classList.toggle('empty-inventory',inventory[t]===0));
  const leaks=findLeakPoints(flooded),showHint=currentLevel===1;
+ const brokenLeaks=[];
+ const activeInlets=currentInlets.filter(p=>!getCellConnections(p.r,p.c)[p.dir]);
  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const cell=gridState[r][c],dom=cell.dom;if(!dom)continue;let cls='cell';if(flooded.has(keyOf(r,c)))cls+=' flooded';if(cell.type==='obstacle')cls+=' obstacle';if(cell.isBroken)cls+=' pipe-shatter';if(showHint&&cell.isSolution&&cell.type!=='obstacle')cls+=' solution-hint';dom.cellEl.className=cls;
   if(cell.type==='pipe'){dom.wrapper.style.display='block';dom.wrapper.className=`pipe-wrapper rot-${cell.rotation}`;dom.pipeI.style.display=cell.pipeType==='I'?'block':'none';dom.pipeL.style.display=cell.pipeType==='L'?'block':'none';dom.pipeT.style.display=cell.pipeType==='T'?'block':'none'}else dom.wrapper.style.display='none';
-  const cellLeaks=leaks.filter(l=>l.r===r&&l.c===c);for(let d=0;d<4;d++)dom.leaks[d].style.display=cellLeaks.some(l=>l.dir===d)?'block':'none';
+  if(cell.isBroken){
+   const dirs=[0,1,2,3].filter(d=>getPipeConnectionsForVisual(cell)[d]);
+   if(dirs.length)dirs.forEach(dir=>brokenLeaks.push({r,c,dir}));
+   else brokenLeaks.push({r,c,dir:2});
+  }
  }
+ waterEffects?.setScene({flooded,leaks,brokenCells:brokenLeaks,inlets:activeInlets});
+ waterEffects?.setWaterLevel(waterLevel);
 }
 function setPauseState(nextPaused){
  if(!hasStartedGame)return;
@@ -1130,6 +1391,7 @@ function startTimer(){
  if(isFrozen){freezeTicksRemaining--;if(freezeTicksRemaining<=0){isFrozen=false;document.getElementById('board-wrapper').classList.remove('frozen')}}
  const flooded=checkConnectivity(),leakCount=findLeakPoints(flooded).length;let speed=isFrozen?0:(1+leakCount*.28)*1.2;if(currentLevel===2)speed*=0.82;currentStep+=speed;waterLevel=Math.min(currentStep/total*100,100);
  document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);const left=Math.ceil(Math.max(0,total-currentStep)/10);document.getElementById('timer-text').textContent=left;
+ waterEffects?.setWaterLevel(waterLevel);
  const w=document.getElementById('water-text'),t=document.getElementById('timer-text');w.style.color=leakCount>0&&!isFrozen?'#e74c3c':'#ecf0f1';w.style.transform=leakCount>0&&!isFrozen?'scale(1.2)':'scale(1)';t.style.color=left<=15&&currentLevel===2&&!isFrozen?'#e74c3c':'#ecf0f1';t.style.transform=left<=15&&currentLevel===2&&!isFrozen?'scale(1.15)':'scale(1)';
  renderGrid(flooded);if(waterLevel>=100)endGame(false);
  },interval)
@@ -1144,7 +1406,7 @@ function endGame(win){
 }
 function nextLevelOrReset(){if(levelWon){if(currentLevel===1)currentLevel=2;else currentLevel=2}else{if(currentLevel===1)score=0}document.getElementById('level-text').textContent=currentLevel;document.getElementById('score-text').textContent=score;resetGame()}
 function resetGame(){
- isGameOver=false;levelWon=false;answerRevealMode=false;waitingForNextAfterReveal=false;waterLevel=0;currentStep=0;isFrozen=false;freezeTicksRemaining=0;isPaused=false;clearInterval(timerInterval);document.getElementById('board-wrapper').classList.remove('frozen');document.getElementById('water-mask').style.height='0%';document.getElementById('water-text').textContent='0';document.getElementById('modal').className='';document.getElementById('modal').style.display='none';document.querySelectorAll('.wall-outlet').forEach(e=>e.classList.remove('flooded-outlet'));setPauseState(false);
+ isGameOver=false;levelWon=false;answerRevealMode=false;waitingForNextAfterReveal=false;waterLevel=0;currentStep=0;isFrozen=false;freezeTicksRemaining=0;isPaused=false;clearInterval(timerInterval);document.getElementById('board-wrapper').classList.remove('frozen');document.getElementById('water-mask').style.height='0%';document.getElementById('water-text').textContent='0';document.getElementById('modal').className='';document.getElementById('modal').style.display='none';document.querySelectorAll('.wall-outlet').forEach(e=>e.classList.remove('flooded-outlet'));waterEffects?.reset();waterEffects?.setWaterLevel(0);setPauseState(false);
  if(currentLevel===1){generateLevel1();document.getElementById('timer-text').textContent=LEVEL1.duration;document.getElementById('tip-text').innerHTML='第一关是教学关：黄色格子就是唯一通道，组件刚好够用。点击已放好的同类水管可旋转。'}
  else{generateLevel2();document.getElementById('timer-text').textContent=LEVEL2.duration;document.getElementById('tip-text').innerHTML='<strong>第二关：</strong>把所有进水口都连到出水口，小心漏水和爆管。'}
  document.getElementById('count-freeze').textContent=freezeCount;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-freeze').classList.toggle('disabled',freezeCount<=0);document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);
@@ -1180,6 +1442,8 @@ function bindUiEvents(){
 function bootstrapUi(){
  document.getElementById('level-text').textContent=currentLevel;
  document.getElementById('score-text').textContent=score;
+ waterEffects=new WaterParticleSystem(document.getElementById('water-effects-canvas'));
+ waterEffects.start();
  bindUiEvents();
  registerPwaSupport();
  const handleViewportChange=()=>requestAnimationFrame(()=>{updateBoardLayout();renderWallPorts();updateOrientationHint();hideBrowserChrome()});
