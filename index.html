@@ -530,11 +530,17 @@ class WaterParticleSystem{
    cellH:this.boardRect.height/Math.max(ROWS,1)
   };
  }
- getDirectionVector(dir){
+ getPortDirectionVector(dir){
   if(dir===3)return{x:1,y:0};
   if(dir===1)return{x:-1,y:0};
   if(dir===0)return{x:0,y:1};
   return{x:0,y:-1};
+ }
+ getCellDirectionVector(dir){
+  if(dir===3)return{x:-1,y:0};
+  if(dir===1)return{x:1,y:0};
+  if(dir===0)return{x:0,y:-1};
+  return{x:0,y:1};
  }
  getPortOrigin(port,offset=.36){
   const {cellW,cellH}=this.getCellSize();
@@ -571,7 +577,7 @@ class WaterParticleSystem{
   });
  }
  emitSpray(origin,dir,count,speedMin,speedMax,opts={}){
-  const vec=this.getDirectionVector(dir);
+  const vec=(opts.vectorType==='port'?this.getPortDirectionVector(dir):this.getCellDirectionVector(dir));
   const cross={x:-vec.y,y:vec.x};
   for(let i=0;i<count;i++){
    const speed=speedMin+Math.random()*(speedMax-speedMin);
@@ -636,10 +642,10 @@ class WaterParticleSystem{
   if(elapsed<32)return;
   this.lastEmit=now;
   if(isPaused||!hasStartedGame)return;
-  this.scene.inlets.forEach(inlet=>{
-   const origin=this.getPortOrigin(inlet);
-   this.emitSpray(origin,inlet.dir,3,58,128,{life:.65,radius:1.6,trail:12,originJitter:6,spread:.42,gravity:820,bounce:.28});
-  });
+ this.scene.inlets.forEach(inlet=>{
+  const origin=this.getPortOrigin(inlet);
+  this.emitSpray(origin,inlet.dir,3,58,128,{life:.65,radius:1.6,trail:12,originJitter:6,spread:.42,gravity:820,bounce:.28,vectorType:'port'});
+ });
   this.scene.leaks.forEach(leak=>{
    const origin=this.getLeakOrigin(leak);
    this.emitSpray(origin,leak.dir,3,82,158,{life:.44,radius:1.5,trail:10,originJitter:5,spread:.5,gravity:840,bounce:.24});
