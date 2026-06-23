@@ -33,8 +33,13 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
 #board-wrapper.paused #water-effects-canvas,
 #board-wrapper.paused .wall-port{opacity:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-#grid{display:grid;width:100%;height:100%;background:rgba(44,62,80,.45)}
-.cell{position:relative;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.045);background:rgba(20,28,36,.12);cursor:pointer}
+#grid{position:relative;z-index:5;display:grid;width:100%;height:100%;background:rgba(44,62,80,.45)}
+.cell{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(255,255,255,.045);background:rgba(20,28,36,.12);cursor:pointer}
+.cell-water-fill{position:absolute;left:-1px;right:-1px;bottom:0;height:0%;pointer-events:none;z-index:1;opacity:0;transition:height .12s linear,opacity .12s linear;background:
+ linear-gradient(180deg,rgba(182,236,255,.18) 0%,rgba(111,204,245,.32) 28%,rgba(52,152,219,.58) 70%,rgba(24,95,158,.82) 100%);
+ box-shadow:inset 0 1px 0 rgba(230,248,255,.55), inset 0 10px 12px rgba(255,255,255,.08)}
+.cell-water-fill::before{content:'';position:absolute;left:-10%;top:-2px;width:120%;height:7px;background:linear-gradient(180deg,rgba(233,250,255,.88),rgba(233,250,255,0));opacity:.82;border-radius:999px;animation:waterSurfaceDrift 4.8s linear infinite}
+@keyframes waterSurfaceDrift{0%{transform:translateX(-3%)}50%{transform:translateX(3%)}100%{transform:translateX(-3%)}}
 .cell.solution-hint{box-shadow:inset 0 0 0 1px rgba(241,196,15,.28)}
 .obstacle{
  background:url('./brick-wall.png') center center / cover no-repeat;
@@ -43,19 +48,8 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
  box-shadow:inset 0 1px 1px rgba(255,255,255,.08), inset 0 -2px 4px rgba(0,0,0,.32);
 }
 .grid-lvl1 .obstacle:after,.grid-lvl2 .obstacle:after{content:'';position:absolute;inset:0;border-radius:2px;background:linear-gradient(180deg,rgba(255,120,70,.12),rgba(120,10,0,.08))}
-#water-mask{position:absolute;left:0;bottom:0;width:100%;height:0%;background:
- linear-gradient(180deg,rgba(143,224,255,.2) 0%,rgba(88,183,233,.16) 18%,rgba(41,128,185,.52) 56%,rgba(22,93,145,.7) 100%);
- backdrop-filter:blur(1px);pointer-events:none;transition:height .1s linear;z-index:5;border-top:2px solid rgba(180,235,255,.9);box-shadow:0 -8px 18px rgba(76,178,255,.15)}
-#water-mask::before,#water-mask::after{content:'';position:absolute;left:-12%;width:124%;pointer-events:none}
-#water-mask::before{top:-14px;height:26px;background:
- radial-gradient(circle at 10px 18px, rgba(215,247,255,.8) 0 6px, transparent 7px),
- radial-gradient(circle at 45px 10px, rgba(111,206,255,.42) 0 8px, transparent 9px),
- radial-gradient(circle at 78px 17px, rgba(255,255,255,.55) 0 5px, transparent 6px);
- background-size:92px 24px;opacity:.8;filter:blur(.2px);animation:waterWaveDrift 4.4s linear infinite}
-#water-mask::after{top:-8px;height:18px;background:linear-gradient(180deg,rgba(255,255,255,.58),rgba(255,255,255,0) 78%);opacity:.42;filter:blur(2px);animation:waterWaveSwell 2.6s ease-in-out infinite}
-@keyframes waterWaveDrift{from{transform:translateX(0)}to{transform:translateX(-92px)}}
-@keyframes waterWaveSwell{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(-2px) scaleX(1.015)}}
-#water-effects-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;opacity:.95}
+#water-mask{position:absolute;left:0;bottom:0;width:100%;height:0%;pointer-events:none;transition:height .1s linear;z-index:2;opacity:0}
+#water-effects-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4;opacity:.95}
 .wall-port{position:absolute;--port-size:28px;--port-shift-x:0px;--port-shift-y:0px;width:var(--port-size);height:var(--port-size);display:flex;align-items:center;justify-content:center;z-index:8;font-size:14px;border-radius:4px;pointer-events:none;background:none;overflow:hidden;transform-origin:center center}
 .wall-port::before{content:'';position:absolute;inset:16%;background-repeat:no-repeat;background-size:contain;background-position:left center;transform:translate(var(--port-shift-x),var(--port-shift-y))}
 .wall-inlet{
@@ -80,7 +74,7 @@ header{width:100%;display:flex;gap:6px;margin-bottom:6px;z-index:9}
 .port-bottom{bottom:calc(var(--port-size) * -0.11);left:var(--port-center-x);transform:translateX(-50%) rotate(270deg)}
 #board-wrapper .wall-port:before{content:''}
 #board-wrapper .wall-port:after{content:none}
-.pipe-wrapper{width:100%;height:100%;position:relative;display:none;transition:transform .15s ease-out}
+.pipe-wrapper{width:100%;height:100%;position:relative;display:none;transition:transform .15s ease-out;z-index:2}
 .pipe-I{position:absolute;background:#95a5a6;border-radius:3px;width:100%;height:30%;top:35%;left:0;display:none}
 .pipe-L,.pipe-T{position:absolute;width:100%;height:100%;background:transparent!important}
 .pipe-L .seg-v,.pipe-T .seg-v{position:absolute;width:30%;height:50%;left:35%;top:0;background:#95a5a6;border-radius:3px 3px 0 0}
@@ -473,6 +467,198 @@ let waitingForNextAfterReveal=false;
 let isPaused=false;
 let hasStartedGame=false;
 let waterEffects=null;
+let waterGrid=[],roomWaterPercent=0,roomWaterOverflow=false;
+
+function clamp01(v){return Math.max(0,Math.min(1,v))}
+function initWaterGrid(){
+ waterGrid=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+ roomWaterPercent=0;
+ roomWaterOverflow=false;
+}
+function isCanHoldCell(r,c){
+ return r>=0&&r<ROWS&&c>=0&&c<COLS&&gridState[r]?.[c]?.type==='empty'&&!gridState[r][c].isBroken;
+}
+function isFlowPassableCell(r,c){
+ return r>=0&&r<ROWS&&c>=0&&c<COLS&&gridState[r]?.[c]?.type!=='obstacle';
+}
+function findNextStorageCell(r,c,dr,dc){
+ let nr=r+dr,nc=c+dc;
+ while(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS){
+  if(!isFlowPassableCell(nr,nc))return null;
+  if(isCanHoldCell(nr,nc))return{r:nr,c:nc};
+  nr+=dr;
+  nc+=dc;
+ }
+ return null;
+}
+function getWaterFillRatio(){
+ let total=0,filled=0;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  if(!isCanHoldCell(r,c))continue;
+  total++;
+  filled+=Math.min(1,waterGrid[r]?.[c]||0);
+ }
+ return total?filled/total:0;
+}
+function hasTopOverflow(){
+ for(let c=0;c<COLS;c++)if(isCanHoldCell(0,c)&&(waterGrid[0]?.[c]||0)>=0.995)return true;
+ return false;
+}
+function isRowFullyFilled(r){
+ let hasCell=false;
+ for(let c=0;c<COLS;c++){
+  if(!isCanHoldCell(r,c))continue;
+  hasCell=true;
+  if((waterGrid[r]?.[c]||0)<0.995)return false;
+ }
+ return hasCell;
+}
+function isRoomFullyFlooded(){
+ const components=buildFlowComponents();
+ for(const comp of components){
+  if(comp.waterVolume<=0.0001)continue;
+  const top=comp.storageCells.filter(p=>p.r===0);
+  const bottom=comp.storageCells.filter(p=>p.r===ROWS-1);
+  if(!top.length||!bottom.length)continue;
+  if(top.every(p=>(waterGrid[p.r][p.c]||0)>=0.995)&&bottom.every(p=>(waterGrid[p.r][p.c]||0)>=0.995))return true;
+ }
+ return false;
+}
+function getCellWaterLevel(r,c){
+ return isCanHoldCell(r,c)?(waterGrid[r]?.[c]||0):0;
+}
+function setCellWaterLevel(r,c,value){
+ if(!isCanHoldCell(r,c))return;
+ waterGrid[r][c]=clamp01(value);
+}
+function addCellWaterLevel(r,c,amount){
+ if(!isCanHoldCell(r,c)||amount<=0)return 0;
+ waterGrid[r][c]=(waterGrid[r][c]||0)+amount;
+ return amount;
+}
+function drainRoomWater(fraction){
+ const f=Math.max(0,Math.min(1,fraction));
+ if(f<=0)return;
+ let total=0;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  if(!isCanHoldCell(r,c))continue;
+  total+=Math.max(0,waterGrid[r][c]||0);
+ }
+ if(total<=0.0001)return;
+ const keepRatio=1-f;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  if(!isCanHoldCell(r,c))continue;
+  waterGrid[r][c]=Math.max(0,(waterGrid[r][c]||0)*keepRatio);
+ }
+ settleWaterGrid();
+}
+function buildFlowComponents(){
+ const visited=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+ const components=[];
+ const dirs=[[-1,0],[0,1],[1,0],[0,-1]];
+ for(let r=0;r<ROWS;r++){
+  for(let c=0;c<COLS;c++){
+   if(visited[r][c]||!isFlowPassableCell(r,c))continue;
+   const q=[{r,c}],cells=[];
+   visited[r][c]=true;
+   while(q.length){
+    const cur=q.shift();
+    cells.push(cur);
+    for(const [dr,dc] of dirs){
+     const nr=cur.r+dr,nc=cur.c+dc;
+     if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+     if(visited[nr][nc]||!isFlowPassableCell(nr,nc))continue;
+     visited[nr][nc]=true;
+     q.push({r:nr,c:nc});
+    }
+   }
+   const storageCells=[];
+   let waterVolume=0;
+   for(const cell of cells){
+    if(!isCanHoldCell(cell.r,cell.c))continue;
+    storageCells.push(cell);
+    waterVolume+=Math.max(0,waterGrid[cell.r][cell.c]||0);
+   }
+   components.push({cells,storageCells,waterVolume});
+  }
+ }
+ return components;
+}
+function collectWaterSources(flooded){
+ const leaks=findLeakPoints(flooded);
+ const activeInlets=currentInlets.filter(p=>!getCellConnections(p.r,p.c)[p.dir]);
+ const brokenLeaks=[];
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  const cell=gridState[r][c];
+  if(!cell||!cell.isBroken)continue;
+  const dirs=[0,1,2,3].filter(d=>getPipeConnectionsForVisual(cell)[d]);
+  if(dirs.length)dirs.forEach(dir=>brokenLeaks.push({r,c,dir}));
+  else brokenLeaks.push({r,c,dir:2});
+ }
+ return {leaks,brokenLeaks,inlets:activeInlets};
+}
+function getLeakTargetCell(source,kind){
+ const drs=[-1,0,1,0],dcs=[0,1,0,-1];
+ const dr=drs[source.dir],dc=dcs[source.dir];
+ const candidates=[];
+ if(kind==='inlet'){
+  candidates.push({r:source.r,c:source.c});
+  candidates.push({r:source.r+dr,c:source.c+dc});
+ }else{
+  candidates.push({r:source.r+dr,c:source.c+dc});
+  candidates.push({r:source.r,c:source.c});
+ }
+ for(const pos of candidates){
+  if(isCanHoldCell(pos.r,pos.c))return pos;
+ }
+ return null;
+}
+function settleWaterGrid(){
+ roomWaterOverflow=false;
+ const components=buildFlowComponents();
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(isCanHoldCell(r,c))waterGrid[r][c]=0;
+ for(const comp of components){
+  const rows=new Map();
+  for(const cell of comp.storageCells){
+   if(!rows.has(cell.r))rows.set(cell.r,[]);
+   rows.get(cell.r).push(cell);
+  }
+  const orderedRows=[...rows.keys()].sort((a,b)=>b-a);
+  let volume=comp.waterVolume;
+  for(const r of orderedRows){
+   const cells=rows.get(r).sort((a,b)=>a.c-b.c);
+   const capacity=cells.length;
+   if(capacity<=0)continue;
+   if(volume>=capacity-0.0001){
+    for(const cell of cells)waterGrid[cell.r][cell.c]=1;
+    volume-=capacity;
+   }else{
+    const fill=volume/capacity;
+    for(const cell of cells)waterGrid[cell.r][cell.c]=Math.max(0,Math.min(1,fill));
+    volume=0;
+    break;
+   }
+  }
+  if(volume>0.0001)roomWaterOverflow=true;
+ }
+ roomWaterPercent=Math.round(getWaterFillRatio()*100);
+ roomWaterOverflow=roomWaterOverflow||hasTopOverflow();
+}
+function injectWaterSources(flooded){
+ const {leaks,brokenLeaks,inlets}=collectWaterSources(flooded);
+ const sourceBatches=[
+  ...leaks.map(src=>({src,kind:'leak',amount:0.042})),
+  ...brokenLeaks.map(src=>({src,kind:'broken',amount:0.078})),
+  ...inlets.map(src=>({src,kind:'inlet',amount:0.03}))
+ ];
+ for(const item of sourceBatches){
+  const target=getLeakTargetCell(item.src,item.kind);
+  if(!target)continue;
+  addCellWaterLevel(target.r,target.c,item.amount);
+ }
+ settleWaterGrid();
+ return {leaks,brokenLeaks,inlets};
+}
 
 class WaterParticleSystem{
  constructor(canvas){
@@ -713,7 +899,6 @@ class WaterParticleSystem{
    this.updateParticles(dt);
   }
   this.clear();
-  this.drawWaterline(now);
   this.drawParticles();
   requestAnimationFrame(this.loop);
  }
@@ -1251,12 +1436,15 @@ function createGridDOM(){
  const showHint=currentLevel===1;
  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
   const cell=gridState[r][c],el=document.createElement('div');el.className='cell';el.onclick=()=>handleCellClick(r,c);if(cell.type==='obstacle')el.classList.add('obstacle');else if(showHint&&cell.isSolution)el.classList.add('solution-hint');
+  const waterFill=document.createElement('div');waterFill.className='cell-water-fill';
   const wrap=document.createElement('div');wrap.className='pipe-wrapper';
   const pipeI=document.createElement('div');pipeI.className='pipe-I';wrap.appendChild(pipeI);
   const pipeL=document.createElement('div');pipeL.className='pipe-L';pipeL.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeL);
   const pipeT=document.createElement('div');pipeT.className='pipe-T';pipeT.innerHTML='<div class="seg-v"></div><div class="seg-h"></div><div class="corner"></div>';wrap.appendChild(pipeT);
+  el.appendChild(waterFill);
   el.appendChild(wrap);
   grid.appendChild(el);cell.dom={cellEl:el,wrapper:wrap,pipeI,pipeL,pipeT};
+  cell.dom.waterFill=waterFill;
  }
  requestAnimationFrame(updateBoardLayout);
 }
@@ -1357,18 +1545,16 @@ function updateGameState(){
 function renderGrid(flooded=new Set()){
  document.getElementById('badge-I').textContent=`x${inventory.I}`;document.getElementById('badge-L').textContent=`x${inventory.L}`;document.getElementById('badge-T').textContent=`x${inventory.T}`;
  ['I','L','T'].forEach(t=>document.getElementById(`btn-${t}`).classList.toggle('empty-inventory',inventory[t]===0));
- const leaks=findLeakPoints(flooded),showHint=currentLevel===1;
- const brokenLeaks=[];
- const activeInlets=currentInlets.filter(p=>!getCellConnections(p.r,p.c)[p.dir]);
+ const scene=collectWaterSources(flooded),showHint=currentLevel===1;
  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const cell=gridState[r][c],dom=cell.dom;if(!dom)continue;let cls='cell';if(flooded.has(keyOf(r,c)))cls+=' flooded';if(cell.type==='obstacle')cls+=' obstacle';if(cell.isBroken)cls+=' pipe-shatter';if(showHint&&cell.isSolution&&cell.type!=='obstacle')cls+=' solution-hint';dom.cellEl.className=cls;
-  if(cell.type==='pipe'){dom.wrapper.style.display='block';dom.wrapper.className=`pipe-wrapper rot-${cell.rotation}`;dom.pipeI.style.display=cell.pipeType==='I'?'block':'none';dom.pipeL.style.display=cell.pipeType==='L'?'block':'none';dom.pipeT.style.display=cell.pipeType==='T'?'block':'none'}else dom.wrapper.style.display='none';
-  if(cell.isBroken){
-   const dirs=[0,1,2,3].filter(d=>getPipeConnectionsForVisual(cell)[d]);
-   if(dirs.length)dirs.forEach(dir=>brokenLeaks.push({r,c,dir}));
-   else brokenLeaks.push({r,c,dir:2});
+  const fill=dom.waterFill,water=isCanHoldCell(r,c)?(waterGrid[r]?.[c]||0):0;
+  if(fill){
+   fill.style.height=`${Math.max(0,Math.min(1,water))*100}%`;
+   fill.style.opacity=water>0.005?Math.min(.95,.12+water*.72):0;
   }
+  if(cell.type==='pipe'){dom.wrapper.style.display='block';dom.wrapper.className=`pipe-wrapper rot-${cell.rotation}`;dom.pipeI.style.display=cell.pipeType==='I'?'block':'none';dom.pipeL.style.display=cell.pipeType==='L'?'block':'none';dom.pipeT.style.display=cell.pipeType==='T'?'block':'none'}else dom.wrapper.style.display='none';
  }
- waterEffects?.setScene({flooded,leaks,brokenCells:brokenLeaks,inlets:activeInlets});
+ waterEffects?.setScene({flooded,leaks:scene.leaks,brokenCells:scene.brokenLeaks,inlets:scene.inlets});
  waterEffects?.setWaterLevel(waterLevel);
 }
 function setPauseState(nextPaused){
@@ -1390,16 +1576,18 @@ function togglePause(){
  playSound(isPaused?640:420,'sine',.08);
 }
 function useFreeze(){ensureAudioContext();startBGM();if(isGameOver||isPaused||isFrozen||freezeCount<=0){playSound(150,'square',.2);return}freezeCount--;document.getElementById('count-freeze').textContent=freezeCount;document.getElementById('btn-freeze').classList.toggle('disabled',freezeCount<=0);isFrozen=true;freezeTicksRemaining=60;document.getElementById('board-wrapper').classList.add('frozen');playFreezeSound()}
-function usePump(){ensureAudioContext();startBGM();if(isGameOver||isPaused||pumpCount<=0||waterLevel<=0){playSound(150,'square',.2);return}pumpCount--;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);const dur=(currentLevel===1?LEVEL1:LEVEL2).duration,total=dur*10;currentStep=Math.max(0,currentStep-total*.5);waterLevel=currentStep/total*100;document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);playPumpSound();updateGameState()}
+function usePump(){ensureAudioContext();startBGM();if(isGameOver||isPaused||pumpCount<=0||waterLevel<=0){playSound(150,'square',.2);return}pumpCount--;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);const dur=(currentLevel===1?LEVEL1:LEVEL2).duration,total=dur*10;currentStep=Math.max(0,currentStep-total*.5);drainRoomWater(.35);waterLevel=roomWaterPercent;document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);playPumpSound();updateGameState()}
 function startTimer(){
  const interval=100,dur=(currentLevel===1?LEVEL1:LEVEL2).duration,total=dur*10;currentStep=0;clearInterval(timerInterval);
  timerInterval=setInterval(()=>{if(isGameOver||isPaused)return;const now=Date.now();for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const cell=gridState[r][c];if(cell.isBroken&&now-cell.brokenTime>=1500){gridState[r][c]={type:'empty',isBroken:false,brokenTime:null,dom:cell.dom,isSolution:cell.isSolution}}}
  if(isFrozen){freezeTicksRemaining--;if(freezeTicksRemaining<=0){isFrozen=false;document.getElementById('board-wrapper').classList.remove('frozen')}}
- const flooded=checkConnectivity(),leakCount=findLeakPoints(flooded).length;let speed=isFrozen?0:(1+leakCount*.28)*1.2;if(currentLevel===2)speed*=0.82;currentStep+=speed;waterLevel=Math.min(currentStep/total*100,100);
+ const flooded=checkConnectivity(),leakCount=findLeakPoints(flooded).length;let speed=isFrozen?0:(1+leakCount*.28)*1.2;if(currentLevel===2)speed*=0.82;currentStep+=speed;
+ if(!isFrozen)injectWaterSources(flooded);
+ waterLevel=roomWaterPercent;
  document.getElementById('water-mask').style.height=`${waterLevel}%`;document.getElementById('water-text').textContent=Math.floor(waterLevel);const left=Math.ceil(Math.max(0,total-currentStep)/10);document.getElementById('timer-text').textContent=left;
  waterEffects?.setWaterLevel(waterLevel);
  const w=document.getElementById('water-text'),t=document.getElementById('timer-text');w.style.color=leakCount>0&&!isFrozen?'#e74c3c':'#ecf0f1';w.style.transform=leakCount>0&&!isFrozen?'scale(1.2)':'scale(1)';t.style.color=left<=15&&currentLevel===2&&!isFrozen?'#e74c3c':'#ecf0f1';t.style.transform=left<=15&&currentLevel===2&&!isFrozen?'scale(1.15)':'scale(1)';
- renderGrid(flooded);if(waterLevel>=100)endGame(false);
+ renderGrid(flooded);if(isRoomFullyFlooded())endGame(false);
  },interval)
 }
 function endGame(win){
@@ -1415,6 +1603,7 @@ function resetGame(){
  isGameOver=false;levelWon=false;answerRevealMode=false;waitingForNextAfterReveal=false;waterLevel=0;currentStep=0;isFrozen=false;freezeTicksRemaining=0;isPaused=false;clearInterval(timerInterval);document.getElementById('board-wrapper').classList.remove('frozen');document.getElementById('water-mask').style.height='0%';document.getElementById('water-text').textContent='0';document.getElementById('modal').className='';document.getElementById('modal').style.display='none';document.querySelectorAll('.wall-outlet').forEach(e=>e.classList.remove('flooded-outlet'));waterEffects?.reset();waterEffects?.setWaterLevel(0);setPauseState(false);
  if(currentLevel===1){generateLevel1();document.getElementById('timer-text').textContent=LEVEL1.duration;document.getElementById('tip-text').innerHTML='第一关是教学关：黄色格子就是唯一通道，组件刚好够用。点击已放好的同类水管可旋转。'}
  else{generateLevel2();document.getElementById('timer-text').textContent=LEVEL2.duration;document.getElementById('tip-text').innerHTML='<strong>第二关：</strong>把所有进水口都连到出水口，小心漏水和爆管。'}
+ initWaterGrid();
  document.getElementById('count-freeze').textContent=freezeCount;document.getElementById('count-pump').textContent=pumpCount;document.getElementById('btn-freeze').classList.toggle('disabled',freezeCount<=0);document.getElementById('btn-pump').classList.toggle('disabled',pumpCount<=0);
  createGridDOM();updateBoardLayout();renderWallPorts();renderGrid();startTimer();
 }
